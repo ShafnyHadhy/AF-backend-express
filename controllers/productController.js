@@ -17,8 +17,8 @@ export async function createProduct(req, res) {
 
         const generatedProductID = "PRD-" + Date.now();
 
-        // 🔥 Public URL (adjust if needed)
-        const publicURL = `http://localhost:3000/product/${generatedProductID}`;
+        // 🔥 Public URL pointing to frontend public details page
+        const publicURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/product-public/${generatedProductID}`;
 
         // 🔥 Generate QR as base64 image
         const qrImage = await QRCode.toDataURL(publicURL);
@@ -30,9 +30,12 @@ export async function createProduct(req, res) {
             model: req.body.model,
             serialNumber: req.body.serialNumber,
             purchaseDate: req.body.purchaseDate,
+            description: req.body.description || "",
+            purchasePrice: req.body.purchasePrice || 0,
             condition: req.body.condition,
             status: "registered",
             qrCode: qrImage,  // save QR image
+            images: req.body.images || [], // save product images
             lifecycle: [
                 {
                     eventType: "registered",
@@ -144,8 +147,8 @@ export async function updateProduct(req, res) {
 
         Object.assign(product, req.body);
 
-        // Add lifecycle event if status changed
-        if (req.body.status) {
+        // Add lifecycle event ONLY if status changed
+        if (req.body.status && req.body.status !== product.status) {
             product.lifecycle.push({
                 eventType: req.body.status,
                 description: `Product status updated to ${req.body.status}`
@@ -247,5 +250,73 @@ export async function addLifecycleEvent(req, res) {
         res.status(500).json({
             message: "Error adding lifecycle event"
         });
+    }
+}
+
+/*
+    TOGGLE SELL STATUS
+*/
+export async function toggleSellStatus(req, res) {
+    if (!req.user) {
+        return res.status(401).json({ message: "Please login first." });
+    }
+
+    try {
+        const { isForSale, price } = req.body;
+        const product = await Product.findOne({
+            productID: req.params.productID,
+            ownerEmail: req.user.email
+        });
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        product.isForSale = isForSale;
+        product.price = price || 0;
+
+        // Add lifecycle event
+        product.lifecycle.push({
+            eventType: isForSale ? "Marketplace Listing" : "Marketplace Unlisting",
+            description: isForSale ? `Product listed for sale at $${price}` : "Product removed from marketplace"
+        });
+
+        await product.save();
+
+        res.json({
+            message: isForSale ? "Product listed for sale!" : "Product unlisted from marketplace",
+            product
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating marketplace status", error: error.message });
+    }
+}
+
+/*
+    GET MARKETPLACE PRODUCTS
+*/
+export async function getMarketplaceProducts(req, res) {
+    try {
+        const products = await Product.find({ isForSale: true });
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching marketplace products", error: error.message });
+    }
+}
+
+/*
+    GET PUBLIC PRODUCT DETAILS (No Login Required)
+*/
+export async function getPublicProductDetails(req, res) {
+    try {
+        const product = await Product.findOne({ productID: req.params.productID });
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        res.json(product);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching public product details", error: error.message });
     }
 }

@@ -41,6 +41,14 @@ const productSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
+    description: {
+        type: String,
+        default: ""
+    },
+    purchasePrice: {
+        type: Number,
+        default: 0
+    },
     condition: {
         type: String,
         default: "good"
@@ -55,6 +63,18 @@ const productSchema = new mongoose.Schema({
     },
     qrCode: {
         type: String
+    },
+    images: {
+        type: [String],
+        default: []
+    },
+    isForSale: {
+        type: Boolean,
+        default: false
+    },
+    price: {
+        type: Number,
+        default: 0
     }
 });
 

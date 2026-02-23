@@ -17,10 +17,10 @@ export async function createProduct(req, res) {
 
         const generatedProductID = "PRD-" + Date.now();
 
-        // 🔥 Public URL pointing to frontend public details page
+        // Public URL pointing to frontend public details page
         const publicURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/product-public/${generatedProductID}`;
 
-        // 🔥 Generate QR as base64 image
+        // Generate QR as base64 image
         const qrImage = await QRCode.toDataURL(publicURL);
 
         const product = new Product({

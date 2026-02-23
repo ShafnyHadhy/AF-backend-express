@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+console.log("!!! DB-MODEL: LOADING PRODUCT MODEL VERSION [2.0.1]");
+
 const lifecycleSchema = new mongoose.Schema({
     eventType: {
         type: String,
@@ -25,7 +27,7 @@ const productSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    brand: {
+    productName: {
         type: String,
         required: true
     },
@@ -33,12 +35,8 @@ const productSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    serialNumber: {
+    category: {
         type: String,
-        required: true
-    },
-    purchaseDate: {
-        type: Date,
         required: true
     },
     description: {
@@ -78,6 +76,7 @@ const productSchema = new mongoose.Schema({
     }
 });
 
-const Product = mongoose.model('Product', productSchema);
+// Force a unique model name to avoid conflicts with previous versions in memory
+const Product = mongoose.model('ProductUpdated', productSchema, 'products');
 
 export default Product;

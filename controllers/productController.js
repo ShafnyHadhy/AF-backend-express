@@ -6,6 +6,9 @@ import QRCode from "qrcode";
     Logged-in users can register their own product
 */
 export async function createProduct(req, res) {
+    console.log("!!! API-CONTROLLER: createProduct CALLED VERSION [2.0.1]");
+    console.log("DEBUG: createProduct full body:", req.body);
+    console.log("DEBUG: Schema paths:", Object.keys(Product.schema.paths));
 
     if (!req.user) {
         return res.status(401).json({
@@ -26,10 +29,9 @@ export async function createProduct(req, res) {
         const product = new Product({
             productID: generatedProductID,
             ownerEmail: req.user.email,
-            brand: req.body.brand,
+            productName: req.body.productName,
             model: req.body.model,
-            serialNumber: req.body.serialNumber,
-            purchaseDate: req.body.purchaseDate,
+            category: req.body.category,
             description: req.body.description || "",
             purchasePrice: req.body.purchasePrice || 0,
             condition: req.body.condition,
@@ -44,6 +46,7 @@ export async function createProduct(req, res) {
             ]
         });
 
+        console.log("Schema paths at runtime:", Object.keys(product.schema.paths));
         await product.save();
 
         res.status(201).json({
@@ -52,6 +55,7 @@ export async function createProduct(req, res) {
         });
 
     } catch (error) {
+        console.error("DEBUG: Error creating product details:", error);
         res.status(500).json({
             message: "Error creating product",
             error: error.message

@@ -28,8 +28,8 @@ app.use(
             jwt.verify(token, process.env.JWT_SECRET_KEY,
                 (err, decoded) => {
 
-                    if (decoded == null) {
-                        res.json(
+                    if (err || decoded == null) {
+                        res.status(401).json(
                             {
                                 message: "Invalid token! Please login again!"
                             }
@@ -39,12 +39,13 @@ app.use(
 
                     } else {
                         req.user = decoded;
+                        next();
                     }
                 }
             );
+        } else {
+            next(); //if he has no token, it will be ignored and the request will be processed as usual.
         }
-
-        next(); //if he has token, it will be decoded and added to req.user, if not, it will be ignored and the request will be processed as usual.
 
     }
 )

@@ -4,6 +4,7 @@ import {
         createProviderProfile, 
         getAllProviderProfiles, 
         getMyProviderProfiles, 
+        getNearbyProviders, 
         rejectProviderProfile, 
         updateMyProviderProfile
     } from "../controllers/providerController.js";
@@ -16,5 +17,6 @@ providerRouter.get("/me", getMyProviderProfiles);
 providerRouter.put("/:providerCode", updateMyProviderProfile);
 providerRouter.patch("/:id/approve", approveProviderProfile);
 providerRouter.patch("/:id/reject", rejectProviderProfile);
+providerRouter.get("/nearby", getNearbyProviders);
 
 export default providerRouter;

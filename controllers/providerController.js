@@ -250,3 +250,57 @@ export async function rejectProviderProfile(req, res) {
         );
     }
 }
+
+export async function getNearbyProviders(req, res) {
+
+    try {
+
+        const { lat, lng, radius = 10, type } = req.query;
+
+        console.log("Nearby search params:", { lat, lng, radius, type });
+
+        if (!lat || !lng) {
+            return res.status(400).json(
+                { 
+                    message: "lat and lng are required" 
+                }
+            );
+        }
+
+        const radiusInMeters = Number(radius) * 1000;
+
+        const providers = await ProviderProfile.aggregate([
+            {
+                $geoNear: {
+                    near: { type: "Point", coordinates: [Number(lng), Number(lat)] },
+                    distanceField: "distanceMeters",
+                    maxDistance: radiusInMeters,
+                    spherical: true,
+                },
+            },
+            {
+                $match: {
+                    approvalStatus: "approved",
+                    isActive: true,
+                    ...(type ? { providerType: type } : {}),
+                },
+            },
+            {
+                $addFields: {
+                    distanceKm: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] },
+                },
+            },
+            { $sort: { distanceMeters: 1 } },
+        ]);
+
+        res.status(200).json(providers);
+
+    } catch (error) {
+        res.status(500).json(
+            {
+                message: "Error fetching nearby providers",
+                error: error.message,
+            }
+        );
+    }
+}

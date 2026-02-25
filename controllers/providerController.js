@@ -94,3 +94,31 @@ export async function getAllProviderProfiles(req, res) {
         );
     }
 }
+
+export async function getMyProviderProfiles(req, res) {
+
+    try {
+
+        const userId = req.user.id;
+
+        if (!userId) {
+            res.status(401).json(
+                {
+                    message: "Unauthorized user..."
+                }
+            );
+            return;
+        }
+
+        const myProfiles = await ProviderProfile.find({ userId }).sort({ createdAt: -1 });
+
+        res.status(200).json(myProfiles);
+    } catch (error) {
+        res.status(500).json(
+            {
+                message: 'Error fetching my provider profiles',
+                error: error.message
+            }
+        );
+    }
+}

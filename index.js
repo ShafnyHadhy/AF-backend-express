@@ -23,7 +23,6 @@ app.use(
         if(token != null){
 
             token = token.replace("Bearer ", "");
-            console.log(token);
             
             jwt.verify(token, process.env.JWT_SECRET_KEY,
                 (err, decoded)=>{

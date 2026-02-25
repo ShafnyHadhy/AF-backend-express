@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 const providerSchema = new mongoose.Schema(
   {
-    // Ownership
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -10,15 +9,13 @@ const providerSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Optional human-friendly code
     providerCode: {
       type: String,
       unique: true,
-      sparse: true, // allows multiple docs without this field
+      sparse: true, 
       trim: true,
     },
 
-    // Business info
     businessName: {
       type: String,
       required: true,
@@ -158,10 +155,8 @@ const providerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Geo index for near/radius queries
 providerSchema.index({ location: "2dsphere" });
 
-// Helpful compound index (optional)
 providerSchema.index({ providerType: 1, approvalStatus: 1, isActive: 1 });
 
 const ProviderProfile = mongoose.model("ProviderProfile", providerSchema);

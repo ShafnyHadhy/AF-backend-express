@@ -71,3 +71,26 @@ export async function createProviderProfile(req, res) {
         );
     }
 }
+
+export async function getAllProviderProfiles(req, res) {
+
+    try {
+
+       const { status } = req.query;
+
+        const filter = {};
+        if (status) filter.approvalStatus = status;
+
+        const providerProfiles = await ProviderProfile.find(filter).sort({ createdAt: -1 });
+
+        res.status(200).json(providerProfiles);
+
+    } catch (error) {
+        res.status(500).json(
+            {
+                message: 'Error fetching provider profiles',
+                error: error.message
+            }
+        );
+    }
+}

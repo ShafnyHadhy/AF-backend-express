@@ -175,3 +175,78 @@ export async function updateMyProviderProfile(req, res) {
         );
     }
 }
+
+export async function approveProviderProfile(req, res) {
+
+    try {
+
+        if (req.user.role !== "admin") {
+            return res.status(403).json(
+                {
+                    message: "Forbidden: Admins only"
+                }
+            );
+        }
+
+        const { id } = req.params;
+
+        const updated = await ProviderProfile.findByIdAndUpdate( id,
+            {
+                approvalStatus: "approved",
+                approvedAt: new Date(),
+                rejectionReason: "",
+            },
+            { new: true }
+        );
+
+        res.status(200).json(
+            {
+                message: "Provider profile approved successfully!",
+                providerProfile: updated,
+            }
+        );
+
+    } catch (error) {
+        res.status(500).json(
+            {
+                message: 'Error approving provider profile',
+                error: error.message
+            }
+        );
+    }
+}
+
+export async function rejectProviderProfile(req, res) {
+
+    try {
+
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        const updated = await ProviderProfile.findByIdAndUpdate( id,
+            {
+                approvalStatus: "rejected",
+                approvedAt: null,
+                rejectionReason: reason || "Rejected by admin",
+            },
+            { new: true }
+        );
+
+        if (!updated) return res.status(404).json({ message: "Provider profile not found" });
+
+        res.status(200).json(
+            { 
+                message: "Rejected", 
+                providerProfile: updated 
+            }
+        );
+
+    } catch (error) {
+        res.status(500).json(
+            {
+                message: "Error rejecting provider profile",
+                error: error.message,
+            }
+        );
+    }
+}

@@ -31,9 +31,11 @@ export async function createProduct(req, res) {
             ownerEmail: req.user.email,
             productName: req.body.productName,
             model: req.body.model,
+            Brand: req.body.Brand,
             category: req.body.category,
             description: req.body.description || "",
             purchasePrice: req.body.purchasePrice || 0,
+            price: req.body.price || 0,
             condition: req.body.condition,
             status: "registered",
             qrCode: qrImage,  // save QR image
@@ -388,7 +390,7 @@ export async function resolveRepair(req, res) {
 
         product.lifecycle.push({
             eventType: newStatus,
-            description: resolution === "repaired" 
+            description: resolution === "repaired"
                 ? "Repair completed. Product returned to active status."
                 : "Repair failed. Product marked as not repairable."
         });

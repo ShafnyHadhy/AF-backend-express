@@ -70,6 +70,7 @@ export async function createProduct(req, res) {
     User sees only their products
 */
 export async function getProducts(req, res) {
+    logToFile(`getProducts called by user: ${req.user?.email}`);
 
     if (!req.user) {
         return res.status(401).json({
@@ -78,14 +79,19 @@ export async function getProducts(req, res) {
     }
 
     try {
+        const totalCount = await Product.countDocuments({});
+        logToFile(`Total products in database: ${totalCount}`);
 
+        logToFile(`Querying products for ownerEmail: ${req.user.email}`);
         const products = await Product.find({
             ownerEmail: req.user.email
         });
 
+        logToFile(`Found ${products.length} products for ${req.user.email}`);
         res.json(products);
 
     } catch (error) {
+        logToFile(`Error fetching products: ${error.message}`);
         res.status(500).json({
             message: "Error fetching products"
         });

@@ -324,3 +324,118 @@ export async function getPublicProductDetails(req, res) {
         res.status(500).json({ message: "Error fetching public product details", error: error.message });
     }
 }
+
+/*
+    BUY PRODUCT
+    Marketplace users can "buy" a product, changing its status to SOLD
+*/
+export async function buyProduct(req, res) {
+    if (!req.user) {
+        return res.status(401).json({ message: "Please login first to buy products." });
+    }
+
+    try {
+        const product = await Product.findOne({
+            productID: req.params.productID,
+            isForSale: true
+        });
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not available for sale." });
+        }
+
+        product.status = "sold";
+        product.isForSale = false;
+
+        product.lifecycle.push({
+            eventType: "sold",
+            description: `Product purchased by ${req.user.email}. Status set to SOLD.`
+        });
+
+        await product.save();
+
+        res.json({
+            message: "Product purchased successfully!",
+            product
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error processing purchase", error: error.message });
+    }
+}
+
+/*
+    RESOLVE REPAIR
+    Mark a product as REPAIRED (back to Active) or NOT REPAIRABLE
+*/
+export async function resolveRepair(req, res) {
+    if (!req.user) {
+        return res.status(401).json({ message: "Please login first." });
+    }
+
+    try {
+        const { resolution } = req.body; // "repaired" or "not repairable"
+        const product = await Product.findOne({
+            productID: req.params.productID,
+            ownerEmail: req.user.email
+        });
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        const newStatus = resolution === "repaired" ? "active" : "not repairable";
+        product.status = newStatus;
+
+        product.lifecycle.push({
+            eventType: newStatus,
+            description: resolution === "repaired" 
+                ? "Repair completed. Product returned to active status."
+                : "Repair failed. Product marked as not repairable."
+        });
+
+        await product.save();
+
+        res.json({
+            message: `Repair resolved as ${resolution}`,
+            product
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error resolving repair", error: error.message });
+    }
+}
+
+/*
+    COMPLETE RECYCLING
+    Finalize the recycling process
+*/
+export async function completeRecycling(req, res) {
+    if (!req.user) {
+        return res.status(401).json({ message: "Please login first." });
+    }
+
+    try {
+        const product = await Product.findOne({
+            productID: req.params.productID,
+            ownerEmail: req.user.email
+        });
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        product.status = "recycled";
+        product.lifecycle.push({
+            eventType: "recycled",
+            description: "Product has been successfully recycled."
+        });
+
+        await product.save();
+
+        res.json({
+            message: "Product marked as recycled",
+            product
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error completing recycling", error: error.message });
+    }
+}

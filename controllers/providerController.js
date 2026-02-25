@@ -122,3 +122,56 @@ export async function getMyProviderProfiles(req, res) {
         );
     }
 }
+
+export async function updateMyProviderProfile(req, res) {
+
+    try {
+
+        const userId = req.user.id;
+        const providerCode = req.params.providerCode;
+
+        if (!userId) {
+            res.status(401).json(
+                {
+                    message: "Unauthorized user..."
+                }
+            );
+            return;
+        }
+
+        const existing = await ProviderProfile.findOne({ providerCode }); 
+        if (!existing) return res.status(404).json(
+            { 
+                message: "Provider profile not found" 
+            }
+        );
+
+        if (existing.userId.toString() !== userId.toString()) {
+            return res.status(403).json(
+                { 
+                    message: "Forbidden: Not your profile" 
+                }
+            );
+        }
+
+        const updated = await ProviderProfile.findOneAndUpdate( { providerCode }, req.body, {
+            new: true,
+            runValidators: true,
+        });
+
+        res.status(200).json(
+            {
+                message: "Provider profile updated successfully!",
+                providerProfile: updated,
+            }
+        );
+
+    } catch (error) {
+        res.status(500).json(
+            {
+                message: 'Error updating provider profile',
+                error: error.message
+            }
+        );
+    }
+}

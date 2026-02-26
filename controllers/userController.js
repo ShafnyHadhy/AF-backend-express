@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 import bcrypt from "bcrypt";
 
-export function createUser(req, res){
+export function createUser(req, res) {
 
     const hashedPassword = bcrypt.hashSync(req.body.password, 10); //soltingRounds = 10
 
@@ -16,13 +16,13 @@ export function createUser(req, res){
     )
 
     user.save().then(
-        ()=>{
+        () => {
             res.json({
                 message: "User created successfully!"
             })
         }
     ).catch(
-        ()=>{
+        () => {
             res.json({
                 message: "Failed to create user!"
             })
@@ -30,15 +30,17 @@ export function createUser(req, res){
     )
 };
 
-export function loginUser(req, res){
+export function loginUser(req, res) {
+
+    // console.log(req.body);
 
     User.findOne(
         {
             email: req.body.email
-        } 
+        }
     ).then(
-        (user)=>{
-            if(user == null){
+        (user) => {
+            if (user == null) {
                 res.status(404).json(
                     {
                         message: "User not found!"
@@ -48,10 +50,11 @@ export function loginUser(req, res){
 
                 const isPasswordMatching = bcrypt.compareSync(req.body.password, user.password);
 
-                if(isPasswordMatching){
+                if (isPasswordMatching) {
 
                     const token = jwt.sign(
                         {
+                            id: user._id,
                             email: user.email,
                             firstName: user.firstName,
                             lastName: user.lastName,
@@ -86,13 +89,13 @@ export function loginUser(req, res){
     )
 };
 
-export function isAdmin(req){
+export function isAdmin(req) {
 
-    if(req.user == null) {
+    if (req.user == null) {
         return false;
     }
 
-    if(req.user.role != 'admin') {
+    if (req.user.role != 'admin') {
         return false;
     }
 

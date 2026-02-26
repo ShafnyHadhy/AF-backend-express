@@ -313,7 +313,7 @@ export async function getNearbyProviders(req, res) {
     }
 }
 
-export async function deleteMyProviderProfile(req, res) {
+export async function deactivateMyProviderProfile(req, res) {
 
     try {
         const userId = req.user?.id;
@@ -340,15 +340,48 @@ export async function deleteMyProviderProfile(req, res) {
             });
         }
 
-        await ProviderProfile.deleteOne({ providerCode });
+         const updated = await ProviderProfile.findOneAndUpdate(
+            { providerCode },
+            { isActive: false },
+            { new: true }
+        );
 
         return res.status(200).json({
-            message: "Provider profile deleted successfully!",
+            message: "Provider profile deactivated successfully!",
+            providerProfile: updated,
         });
 
     } catch (error) {
         return res.status(500).json({
             message: "Error deleting provider profile",
+            error: error.message,
+        });
+    }
+}
+
+export async function restoreProviderProfile(req, res) {
+
+    try {
+        const { providerCode } = req.params;
+
+        const updated = await ProviderProfile.findOneAndUpdate(
+            { providerCode },
+            { isActive: true },
+            { new: true }
+        );
+
+        if (!updated) {
+            return res.status(404).json({ message: "Provider not found" });
+        }
+
+        res.status(200).json({
+            message: "Provider profile restored successfully!",
+            providerProfile: updated,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Error restoring provider profile",
             error: error.message,
         });
     }

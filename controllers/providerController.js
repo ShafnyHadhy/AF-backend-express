@@ -223,6 +223,14 @@ export async function rejectProviderProfile(req, res) {
         const { id } = req.params;
         const { reason } = req.body;
 
+        if (req.user.role !== "admin") {
+            return res.status(403).json(
+                {
+                    message: "Forbidden: Admins only"
+                }
+            );
+        }
+
         const updated = await ProviderProfile.findByIdAndUpdate( id,
             {
                 approvalStatus: "rejected",

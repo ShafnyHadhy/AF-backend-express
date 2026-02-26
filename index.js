@@ -52,6 +52,7 @@ app.use(
 
 const connectionString = process.env.MONGO_URI;
 
+// Connect to the MongoDB Database
 mongoose.connect(connectionString)
     .then(
         () => {

@@ -2,9 +2,10 @@ import mongoose from 'mongoose';
 
 console.log("!!! DB-MODEL: LOADING PRODUCT MODEL VERSION [2.0.1]");
 
+//LIFECYCLE SCHEMA
 const lifecycleSchema = new mongoose.Schema({
     eventType: {
-        type: String,
+        type: String, // ("active", "sold", "recycled", etc.)
         required: true
     },
     description: {
@@ -17,11 +18,12 @@ const lifecycleSchema = new mongoose.Schema({
     }
 });
 
+// PRODUCT SCHEMA
 const productSchema = new mongoose.Schema({
     productID: {
         type: String,
         required: true,
-        unique: true,
+        unique: true, // Prevents duplicate product IDs in the database
     },
     ownerEmail: {
         type: String,

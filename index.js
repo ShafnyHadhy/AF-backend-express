@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import productRouter from "./routes/productRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
+import providerRouter from "./routes/providerProfileRouter.js";
 
 dotenv.config();
 
@@ -23,7 +24,6 @@ app.use(
         if (token != null) {
 
             token = token.replace("Bearer ", "");
-            console.log(token);
 
             jwt.verify(token, process.env.JWT_SECRET_KEY,
                 (err, decoded) => {
@@ -66,6 +66,7 @@ mongoose.connect(connectionString)
 
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
+app.use("/api/providers", providerRouter);
 
 
 app.listen(5000,

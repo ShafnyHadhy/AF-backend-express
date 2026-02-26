@@ -52,6 +52,7 @@ export function loginUser(req, res){
 
                     const token = jwt.sign(
                         {
+                            id: user._id,
                             email: user.email,
                             firstName: user.firstName,
                             lastName: user.lastName,
@@ -66,6 +67,7 @@ export function loginUser(req, res){
                             message: "Login successful!",
                             token: token,
                             user: {
+                                id: user._id,
                                 email: user.email,
                                 firstName: user.firstName,
                                 lastName: user.lastName,

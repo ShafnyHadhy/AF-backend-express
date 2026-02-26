@@ -1,48 +1,3 @@
-// import mongoose from 'mongoose';
-
-// const userSchema = new mongoose.Schema(
-//     {
-//         email: {
-//             type: String,
-//             required: true,
-//             unique: true,
-//         },
-//         firstName: {
-//             type: String,
-//             required: true,
-//         },
-//         lastName: {
-//             type: String,
-//             required: true,
-//         },
-//         password: {
-//             type: String,
-//             required: true,
-//         },
-//         role: {
-//             type: String,
-//             required: true,
-//             default: 'user',
-//         },
-//         isBlocked: {
-//             type: Boolean,
-//             default: false,
-//         },
-//         isEmailVarified: {
-//             type: Boolean,
-//             default: false,
-//         },
-//         image: {
-//             type: String,
-//             default: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-//         }
-//     }
-// );
-
-// const User = mongoose.model('User', userSchema);
-
-// export default User;
-
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
@@ -62,8 +17,16 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["customer", "provider"],
+      enum: ["customer", "provider", "recycler", "admin"],
       default: "customer",
+    },
+    firstName: {
+      type: String,
+      required: true,
+    },
+    lastName: {
+      type: String,
+      required: true,
     },
     phoneNumber: {
       type: String,
@@ -82,6 +45,7 @@ const userSchema = new mongoose.Schema(
     },
 
     // ===== ACCOUNT STATUS =====
+
     isActive: {
       type: Boolean,
       default: true,
@@ -94,9 +58,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    lastLogin: {
+      type: Date,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
+    },
+
+    // ===== OTP =====
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otp: {
+      type: String,
+    },
+    otpExpires: {
+      type: Date,
     },
 
     // ===== CUSTOMER FIELDS =====
@@ -247,15 +226,113 @@ const userSchema = new mongoose.Schema(
         },
       ],
     },
-    isVerified: {
-      type: Boolean,
-      default: false,
+
+    // ===== RECYCLER FIELDS ===== (New)
+    recyclerDetails: {
+      // Personal Information
+      firstName: String,
+      lastName: String,
+
+      // Company Information
+      companyName: String,
+      companyPhone: String,
+      companyRegistrationNo: String,
+
+      // Recycler Specific
+      recyclingTypes: [
+        {
+          type: String,
+          enum: [
+            "electronics",
+            "plastic",
+            "metal",
+            "paper",
+            "glass",
+            "batteries",
+            "other",
+          ],
+        },
+      ],
+      collectionPoints: [
+        {
+          name: String,
+          address: String,
+          city: String,
+          contactNumber: String,
+          operatingHours: String,
+        },
+      ],
+      pickupService: {
+        available: { type: Boolean, default: false },
+        fee: Number,
+        minimumWeight: Number,
+      },
+      pricing: {
+        pricePerKg: Number,
+        negotiable: { type: Boolean, default: true },
+      },
+      certifications: [
+        {
+          name: String,
+          issuedBy: String,
+          validUntil: Date,
+        },
+      ],
+      totalRecycled: {
+        type: Number, // in kg
+        default: 0,
+      },
+      serviceArea: [String], // Cities they serve
+
+      // Bank Details
+      bankDetails: {
+        accountHolderName: String,
+        bankName: String,
+        branch: String,
+        accountNumber: String,
+        accountType: {
+          type: String,
+          enum: ["savings", "current"],
+        },
+      },
+
+      // Performance
+      rating: {
+        average: { type: Number, default: 0 },
+        count: { type: Number, default: 0 },
+      },
+      isAvailable: {
+        type: Boolean,
+        default: true,
+      },
     },
-    otp: {
-      type: String,
-    },
-    otpExpires: {
-      type: Date,
+
+    // ===== ADMIN FIELDS ===== (New)
+    adminDetails: {
+      firstName: String,
+      lastName: String,
+      department: {
+        type: String,
+        enum: ["management", "operations", "finance", "support", "technical"],
+      },
+      permissions: [
+        {
+          type: String,
+          enum: [
+            "manage_users",
+            "manage_providers",
+            "manage_recyclers",
+            "manage_repairs",
+            "view_reports",
+            "manage_system",
+          ],
+        },
+      ],
+      accessLevel: {
+        type: String,
+        enum: ["super_admin", "admin", "moderator"],
+        default: "admin",
+      },
     },
   },
   {
@@ -263,12 +340,47 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-// ===== INDEXES ONLY (for performance) =====
+// ===== INDEXES for performance =====
 userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ "customerDetails.nic": 1 });
 userSchema.index({ "providerDetails.companyRegistrationNo": 1 });
 userSchema.index({ "providerDetails.specialization": 1 });
+userSchema.index({ "recyclerDetails.companyRegistrationNo": 1 });
+userSchema.index({ isActive: 1 });
+userSchema.index({ isVerified: 1 });
+
+// ===== VIRTUAL for full name =====
+userSchema.virtual("fullName").get(function () {
+  if (this.firstName && this.lastName) {
+    return `${this.firstName} ${this.lastName}`;
+  }
+
+  // Fallback to role-specific names
+  if (this.role === "customer" && this.customerDetails?.firstName) {
+    return `${this.customerDetails.firstName} ${this.customerDetails.lastName}`;
+  }
+  if (this.role === "provider" && this.providerDetails?.firstName) {
+    return `${this.providerDetails.firstName} ${this.providerDetails.lastName}`;
+  }
+  if (this.role === "recycler" && this.recyclerDetails?.firstName) {
+    return `${this.recyclerDetails.firstName} ${this.recyclerDetails.lastName}`;
+  }
+  if (this.role === "admin" && this.adminDetails?.firstName) {
+    return `${this.adminDetails.firstName} ${this.adminDetails.lastName}`;
+  }
+
+  return this.email;
+});
+
+// ===== METHODS =====
+userSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  delete obj.otp;
+  delete obj.otpExpires;
+  return obj;
+};
 
 const User = mongoose.model("User", userSchema);
 

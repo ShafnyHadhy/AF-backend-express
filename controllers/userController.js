@@ -4,83 +4,41 @@ import jwt from "jsonwebtoken";
 import {
   sendWelcomeEmail,
   sendLoginNotification,
+  sendStatusChangeEmail,
+  sendTestEmail as sendTestEmailService,
 } from "../utils/emailService.js";
 import { generateOTP, sendOTPEmail } from "../utils/otpService.js";
 
-// ==================== CUSTOMER REGISTRATION ====================
-export async function registerCustomerStep1(req, res) {
+// ==================== REGISTRATION STEP 1 (Send OTP) - ALL ROLES ====================
+export async function registerStep1(req, res) {
   try {
-    const { email, password, phoneNumber, address, customerDetails } = req.body;
-
-    // Check if user already exists and is verified
-    const existingUser = await User.findOne({ email });
-    if (existingUser && existingUser.isVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered",
-      });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Generate OTP
-    const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Prepare user data
-    const userData = {
+    const {
       email,
-      password: hashedPassword,
-      role: "customer",
+      password,
+      firstName,
+      lastName,
       phoneNumber,
+      role,
       address,
-      customerDetails: {
-        firstName: customerDetails.firstName,
-        lastName: customerDetails.lastName,
-        dateOfBirth: customerDetails.dateOfBirth,
-        nic: customerDetails.nic,
-        bankDetails: customerDetails.bankDetails || {},
-        preferredContactMethod:
-          customerDetails.preferredContactMethod || "email",
-        loyaltyPoints: 0,
-        totalRepairs: 0,
-      },
-      isVerified: false,
-      otp,
-      otpExpires,
-    };
+      customerDetails,
+      providerDetails,
+      recyclerDetails,
+      adminDetails,
+    } = req.body;
 
-    // If user exists but not verified, update; otherwise create new
-    if (existingUser && !existingUser.isVerified) {
-      await User.findByIdAndUpdate(existingUser._id, userData);
-    } else {
-      const user = new User(userData);
-      await user.save();
+    if (
+      !email ||
+      !password ||
+      !firstName ||
+      !lastName ||
+      !phoneNumber ||
+      !role
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
     }
-
-    // Send OTP email
-    await sendOTPEmail(email, otp, customerDetails.firstName);
-
-    res.status(200).json({
-      success: true,
-      message: "OTP sent to your email",
-      email: email,
-    });
-  } catch (error) {
-    console.error("Registration step 1 error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Registration failed",
-      error: error.message,
-    });
-  }
-}
-
-// ==================== PROVIDER REGISTRATION ====================
-export async function registerProviderStep1(req, res) {
-  try {
-    const { email, password, phoneNumber, address, providerDetails } = req.body;
 
     // Check if user already exists and is verified
     const existingUser = await User.findOne({ email });
@@ -91,8 +49,8 @@ export async function registerProviderStep1(req, res) {
       });
     }
 
-    // Check if company registration already exists
-    if (providerDetails.companyRegistrationNo) {
+    // Check company registration uniqueness for provider/recycler
+    if (role === "provider" && providerDetails?.companyRegistrationNo) {
       const existingCompany = await User.findOne({
         "providerDetails.companyRegistrationNo":
           providerDetails.companyRegistrationNo,
@@ -105,23 +63,54 @@ export async function registerProviderStep1(req, res) {
       }
     }
 
+    if (role === "recycler" && recyclerDetails?.companyRegistrationNo) {
+      const existingCompany = await User.findOne({
+        "recyclerDetails.companyRegistrationNo":
+          recyclerDetails.companyRegistrationNo,
+      });
+      if (existingCompany) {
+        return res.status(400).json({
+          success: false,
+          message: "Company registration number already exists",
+        });
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate OTP
+    // Generate OTP (3 minutes)
     const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const otpExpires = new Date(Date.now() + 3 * 60 * 1000);
 
-    // Prepare user data
+    // Base user data
     const userData = {
       email,
       password: hashedPassword,
-      role: "provider",
+      firstName,
+      lastName,
       phoneNumber,
-      address,
-      providerDetails: {
-        firstName: providerDetails.firstName,
-        lastName: providerDetails.lastName,
+      role,
+      address: address || {},
+      isVerified: false,
+      otp,
+      otpExpires,
+      isActive: true,
+    };
+
+    // Add role-specific details based on role
+    if (role === "customer" && customerDetails) {
+      userData.customerDetails = {
+        ...customerDetails,
+        loyaltyPoints: 0,
+        totalRepairs: 0,
+      };
+    }
+
+    if (role === "provider" && providerDetails) {
+      userData.providerDetails = {
+        firstName: providerDetails.firstName || firstName,
+        lastName: providerDetails.lastName || lastName,
         companyName: providerDetails.companyName,
         companyPhone: providerDetails.companyPhone,
         companyRegistrationNo: providerDetails.companyRegistrationNo,
@@ -147,11 +136,38 @@ export async function registerProviderStep1(req, res) {
         rating: { average: 0, count: 0 },
         completedJobs: 0,
         reviews: [],
-      },
-      isVerified: false,
-      otp,
-      otpExpires,
-    };
+      };
+    }
+
+    if (role === "recycler" && recyclerDetails) {
+      userData.recyclerDetails = {
+        firstName: recyclerDetails.firstName || firstName,
+        lastName: recyclerDetails.lastName || lastName,
+        companyName: recyclerDetails.companyName,
+        companyPhone: recyclerDetails.companyPhone,
+        companyRegistrationNo: recyclerDetails.companyRegistrationNo,
+        recyclingTypes: recyclerDetails.recyclingTypes || [],
+        collectionPoints: recyclerDetails.collectionPoints || [],
+        pickupService: recyclerDetails.pickupService || { available: false },
+        pricing: recyclerDetails.pricing || { pricePerKg: 0 },
+        certifications: recyclerDetails.certifications || [],
+        totalRecycled: 0,
+        serviceArea: recyclerDetails.serviceArea || [],
+        bankDetails: recyclerDetails.bankDetails || {},
+        isAvailable: true,
+        rating: { average: 0, count: 0 },
+      };
+    }
+
+    if (role === "admin" && adminDetails) {
+      userData.adminDetails = {
+        firstName: adminDetails.firstName || firstName,
+        lastName: adminDetails.lastName || lastName,
+        department: adminDetails.department || "operations",
+        permissions: adminDetails.permissions || ["view_reports"],
+        accessLevel: adminDetails.accessLevel || "admin",
+      };
+    }
 
     // If user exists but not verified, update; otherwise create new
     if (existingUser && !existingUser.isVerified) {
@@ -162,12 +178,13 @@ export async function registerProviderStep1(req, res) {
     }
 
     // Send OTP email
-    await sendOTPEmail(email, otp, providerDetails.firstName);
+    await sendOTPEmail(email, otp, firstName);
 
     res.status(200).json({
       success: true,
       message: "OTP sent to your email",
       email: email,
+      role: role,
     });
   } catch (error) {
     console.error("Registration step 1 error:", error);
@@ -184,7 +201,6 @@ export async function verifyOTP(req, res) {
   try {
     const { email, otp } = req.body;
 
-    // Find user
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -194,7 +210,6 @@ export async function verifyOTP(req, res) {
       });
     }
 
-    // Check if already verified
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
@@ -202,7 +217,6 @@ export async function verifyOTP(req, res) {
       });
     }
 
-    // Check if OTP matches and not expired
     if (user.otp !== otp) {
       return res.status(400).json({
         success: false,
@@ -217,24 +231,12 @@ export async function verifyOTP(req, res) {
       });
     }
 
-    // Mark as verified and clear OTP fields
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
 
-    // Send welcome email after verification
-    if (user.role === "customer") {
-      sendWelcomeEmail({
-        email: user.email,
-        firstName: user.customerDetails.firstName,
-      }).catch((err) => console.error("Welcome email failed:", err));
-    } else {
-      sendWelcomeEmail({
-        email: user.email,
-        firstName: user.providerDetails.firstName,
-      }).catch((err) => console.error("Welcome email failed:", err));
-    }
+    await sendWelcomeEmail(user.email, user.firstName, user.role);
 
     res.json({
       success: true,
@@ -243,10 +245,8 @@ export async function verifyOTP(req, res) {
         id: user._id,
         email: user.email,
         role: user.role,
-        firstName:
-          user.role === "customer"
-            ? user.customerDetails?.firstName
-            : user.providerDetails?.firstName,
+        firstName: user.firstName,
+        lastName: user.lastName,
       },
     });
   } catch (error) {
@@ -280,22 +280,14 @@ export async function resendOTP(req, res) {
       });
     }
 
-    // Generate new OTP
     const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const otpExpires = new Date(Date.now() + 3 * 60 * 1000);
 
-    // Update user
     user.otp = otp;
     user.otpExpires = otpExpires;
     await user.save();
 
-    // Send OTP email
-    const firstName =
-      user.role === "customer"
-        ? user.customerDetails?.firstName
-        : user.providerDetails?.firstName;
-
-    await sendOTPEmail(email, otp, firstName);
+    await sendOTPEmail(email, otp, user.firstName);
 
     res.json({
       success: true,
@@ -311,178 +303,11 @@ export async function resendOTP(req, res) {
   }
 }
 
-// ==================== ORIGINAL REGISTRATION (Backward Compatibility) ====================
-export async function registerCustomer(req, res) {
-  try {
-    const { email, password, phoneNumber, address, customerDetails } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered",
-      });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new customer
-    const user = new User({
-      email,
-      password: hashedPassword,
-      role: "customer",
-      phoneNumber,
-      address,
-      customerDetails: {
-        firstName: customerDetails.firstName,
-        lastName: customerDetails.lastName,
-        dateOfBirth: customerDetails.dateOfBirth,
-        nic: customerDetails.nic,
-        bankDetails: customerDetails.bankDetails || {},
-        preferredContactMethod:
-          customerDetails.preferredContactMethod || "email",
-        loyaltyPoints: 0,
-        totalRepairs: 0,
-      },
-      isVerified: true, // Auto-verified for backward compatibility
-    });
-
-    await user.save();
-
-    // Send welcome email (don't await - background)
-    sendWelcomeEmail({
-      email: user.email,
-      firstName: user.customerDetails.firstName,
-    }).catch((err) => console.error("Welcome email failed:", err));
-
-    res.status(201).json({
-      success: true,
-      message: "Customer registered successfully!",
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        firstName: user.customerDetails.firstName,
-        lastName: user.customerDetails.lastName,
-      },
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Registration failed",
-      error: error.message,
-    });
-  }
-}
-
-export async function registerProvider(req, res) {
-  try {
-    const { email, password, phoneNumber, address, providerDetails } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered",
-      });
-    }
-
-    // Check if company registration already exists
-    if (providerDetails.companyRegistrationNo) {
-      const existingCompany = await User.findOne({
-        "providerDetails.companyRegistrationNo":
-          providerDetails.companyRegistrationNo,
-      });
-      if (existingCompany) {
-        return res.status(400).json({
-          success: false,
-          message: "Company registration number already exists",
-        });
-      }
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new provider
-    const user = new User({
-      email,
-      password: hashedPassword,
-      role: "provider",
-      phoneNumber,
-      address,
-      providerDetails: {
-        firstName: providerDetails.firstName,
-        lastName: providerDetails.lastName,
-        companyName: providerDetails.companyName,
-        companyPhone: providerDetails.companyPhone,
-        companyRegistrationNo: providerDetails.companyRegistrationNo,
-        specialization: providerDetails.specialization || [],
-        experience: providerDetails.experience || 0,
-        bankDetails: providerDetails.bankDetails || {},
-        description: providerDetails.description || "",
-        yearsInBusiness: providerDetails.yearsInBusiness || 0,
-        employeeCount: providerDetails.employeeCount || 1,
-        serviceArea: providerDetails.serviceArea || [],
-        workingHours: providerDetails.workingHours || {
-          monday: { open: "09:00", close: "18:00", isOpen: true },
-          tuesday: { open: "09:00", close: "18:00", isOpen: true },
-          wednesday: { open: "09:00", close: "18:00", isOpen: true },
-          thursday: { open: "09:00", close: "18:00", isOpen: true },
-          friday: { open: "09:00", close: "18:00", isOpen: true },
-          saturday: { open: "09:00", close: "13:00", isOpen: true },
-          sunday: { open: "00:00", close: "00:00", isOpen: false },
-        },
-        documents: providerDetails.documents || {},
-        pricing: providerDetails.pricing || {},
-        isAvailable: true,
-        rating: { average: 0, count: 0 },
-        completedJobs: 0,
-        reviews: [],
-      },
-      isVerified: true, // Auto-verified for backward compatibility
-    });
-
-    await user.save();
-
-    // Send welcome email
-    sendWelcomeEmail({
-      email: user.email,
-      firstName: user.providerDetails.firstName,
-    }).catch((err) => console.error("Welcome email failed:", err));
-
-    res.status(201).json({
-      success: true,
-      message: "Provider registered successfully!",
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        firstName: user.providerDetails.firstName,
-        lastName: user.providerDetails.lastName,
-        companyName: user.providerDetails.companyName,
-      },
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Registration failed",
-      error: error.message,
-    });
-  }
-}
-
-// ==================== LOGIN (Both Customer & Provider) ====================
+// ==================== LOGIN ====================
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
 
-    // Find user by email
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -492,7 +317,6 @@ export async function login(req, res) {
       });
     }
 
-    // Check if email is verified
     if (!user.isVerified) {
       return res.status(403).json({
         success: false,
@@ -502,7 +326,6 @@ export async function login(req, res) {
       });
     }
 
-    // Check if account is active
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
@@ -510,7 +333,6 @@ export async function login(req, res) {
       });
     }
 
-    // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -520,11 +342,9 @@ export async function login(req, res) {
       });
     }
 
-    // Update last login
     user.lastLogin = new Date();
     await user.save();
 
-    // Generate JWT token
     const token = jwt.sign(
       {
         userId: user._id,
@@ -535,31 +355,47 @@ export async function login(req, res) {
       { expiresIn: "24h" },
     );
 
-    // Send login notification
     sendLoginNotification({
       email: user.email,
-      firstName:
-        user.role === "customer"
-          ? user.customerDetails?.firstName
-          : user.providerDetails?.firstName,
+      firstName: user.firstName,
     }).catch((err) => console.error("Login email failed:", err));
 
-    // Prepare response based on role
-    let userResponse = {
+    const userResponse = {
       id: user._id,
       email: user.email,
       role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber,
+      profileImage: user.profileImage,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      address: user.address,
     };
 
     if (user.role === "customer") {
-      userResponse.firstName = user.customerDetails?.firstName;
-      userResponse.lastName = user.customerDetails?.lastName;
-      userResponse.loyaltyPoints = user.customerDetails?.loyaltyPoints;
-    } else {
-      userResponse.firstName = user.providerDetails?.firstName;
-      userResponse.lastName = user.providerDetails?.lastName;
-      userResponse.companyName = user.providerDetails?.companyName;
-      userResponse.isAvailable = user.providerDetails?.isAvailable;
+      userResponse.customerDetails = user.customerDetails;
+    } else if (user.role === "provider") {
+      userResponse.providerDetails = {
+        companyName: user.providerDetails?.companyName,
+        specialization: user.providerDetails?.specialization,
+        isAvailable: user.providerDetails?.isAvailable,
+        rating: user.providerDetails?.rating,
+        completedJobs: user.providerDetails?.completedJobs,
+      };
+    } else if (user.role === "recycler") {
+      userResponse.recyclerDetails = {
+        companyName: user.recyclerDetails?.companyName,
+        recyclingTypes: user.recyclerDetails?.recyclingTypes,
+        isAvailable: user.recyclerDetails?.isAvailable,
+        rating: user.recyclerDetails?.rating,
+        totalRecycled: user.recyclerDetails?.totalRecycled,
+      };
+    } else if (user.role === "admin") {
+      userResponse.adminDetails = {
+        department: user.adminDetails?.department,
+        accessLevel: user.adminDetails?.accessLevel,
+      };
     }
 
     res.json({
@@ -578,13 +414,135 @@ export async function login(req, res) {
   }
 }
 
+// ==================== GET PROFILE ====================
+export async function getProfile(req, res) {
+  try {
+    const userId = req.user.userId;
+
+    const user = await User.findById(userId).select(
+      "-password -otp -otpExpires",
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching profile",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== UPDATE PROFILE ====================
+export async function updateProfile(req, res) {
+  try {
+    const userId = req.user.userId;
+    const updates = req.body;
+
+    const allowedUpdates = [
+      "firstName",
+      "lastName",
+      "phoneNumber",
+      "address",
+      "profileImage",
+    ];
+
+    const updateData = {};
+
+    for (let key of allowedUpdates) {
+      if (updates[key] !== undefined) {
+        updateData[key] = updates[key];
+      }
+    }
+
+    if (req.user.role === "customer" && updates.customerDetails) {
+      updateData.customerDetails = updates.customerDetails;
+    }
+
+    if (req.user.role === "provider" && updates.providerDetails) {
+      const allowedProviderUpdates = [
+        "description",
+        "specialization",
+        "serviceArea",
+        "workingHours",
+        "pricing",
+        "isAvailable",
+      ];
+
+      updateData.providerDetails = {};
+      allowedProviderUpdates.forEach((field) => {
+        if (updates.providerDetails[field] !== undefined) {
+          updateData.providerDetails[field] = updates.providerDetails[field];
+        }
+      });
+    }
+
+    if (req.user.role === "recycler" && updates.recyclerDetails) {
+      const allowedRecyclerUpdates = [
+        "recyclingTypes",
+        "collectionPoints",
+        "pickupService",
+        "pricing",
+        "serviceArea",
+        "isAvailable",
+      ];
+
+      updateData.recyclerDetails = {};
+      allowedRecyclerUpdates.forEach((field) => {
+        if (updates.recyclerDetails[field] !== undefined) {
+          updateData.recyclerDetails[field] = updates.recyclerDetails[field];
+        }
+      });
+    }
+
+    if (req.user.role === "admin" && updates.adminDetails) {
+      const allowedAdminUpdates = ["department"];
+
+      updateData.adminDetails = {};
+      allowedAdminUpdates.forEach((field) => {
+        if (updates.adminDetails[field] !== undefined) {
+          updateData.adminDetails[field] = updates.adminDetails[field];
+        }
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password -otp -otpExpires");
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating profile",
+      error: error.message,
+    });
+  }
+}
+
 // ==================== GET ALL PROVIDERS ====================
 export async function getAllProviders(req, res) {
   try {
     const { specialization, city, minRating } = req.query;
 
-    // Build filter query
-    let filter = { role: "provider", isActive: true };
+    let filter = { role: "provider", isActive: true, isVerified: true };
 
     if (specialization) {
       filter["providerDetails.specialization"] = specialization;
@@ -601,7 +559,7 @@ export async function getAllProviders(req, res) {
     }
 
     const providers = await User.find(filter)
-      .select("-password -bankDetails -documents")
+      .select("-password -bankDetails -documents -otp -otpExpires")
       .sort({ "providerDetails.rating.average": -1 });
 
     res.json({
@@ -610,11 +568,11 @@ export async function getAllProviders(req, res) {
       providers: providers.map((provider) => ({
         id: provider._id,
         email: provider.email,
+        firstName: provider.firstName,
+        lastName: provider.lastName,
         phoneNumber: provider.phoneNumber,
         address: provider.address,
         providerDetails: {
-          firstName: provider.providerDetails?.firstName,
-          lastName: provider.providerDetails?.lastName,
           companyName: provider.providerDetails?.companyName,
           specialization: provider.providerDetails?.specialization,
           experience: provider.providerDetails?.experience,
@@ -645,7 +603,7 @@ export async function getProviderById(req, res) {
       _id: id,
       role: "provider",
       isActive: true,
-    }).select("-password -bankDetails");
+    }).select("-password -bankDetails -otp -otpExpires");
 
     if (!provider) {
       return res.status(404).json({
@@ -656,29 +614,7 @@ export async function getProviderById(req, res) {
 
     res.json({
       success: true,
-      provider: {
-        id: provider._id,
-        email: provider.email,
-        phoneNumber: provider.phoneNumber,
-        address: provider.address,
-        providerDetails: {
-          firstName: provider.providerDetails?.firstName,
-          lastName: provider.providerDetails?.lastName,
-          companyName: provider.providerDetails?.companyName,
-          specialization: provider.providerDetails?.specialization,
-          experience: provider.providerDetails?.experience,
-          description: provider.providerDetails?.description,
-          yearsInBusiness: provider.providerDetails?.yearsInBusiness,
-          employeeCount: provider.providerDetails?.employeeCount,
-          serviceArea: provider.providerDetails?.serviceArea,
-          workingHours: provider.providerDetails?.workingHours,
-          rating: provider.providerDetails?.rating,
-          completedJobs: provider.providerDetails?.completedJobs,
-          isAvailable: provider.providerDetails?.isAvailable,
-          pricing: provider.providerDetails?.pricing,
-          reviews: provider.providerDetails?.reviews,
-        },
-      },
+      provider,
     });
   } catch (error) {
     console.error("Error fetching provider:", error);
@@ -690,190 +626,96 @@ export async function getProviderById(req, res) {
   }
 }
 
-// ==================== GET CUSTOMER PROFILE ====================
-export async function getCustomerProfile(req, res) {
+// ==================== GET ALL RECYCLERS ====================
+export async function getAllRecyclers(req, res) {
   try {
-    const userId = req.user.userId;
+    const { recyclingType, city } = req.query;
 
-    const customer = await User.findOne({
-      _id: userId,
-      role: "customer",
-      isActive: true,
-    }).select("-password");
+    let filter = { role: "recycler", isActive: true, isVerified: true };
 
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
+    if (recyclingType) {
+      filter["recyclerDetails.recyclingTypes"] = recyclingType;
     }
+
+    if (city) {
+      filter["recyclerDetails.serviceArea"] = city;
+    }
+
+    const recyclers = await User.find(filter)
+      .select("-password -bankDetails -otp -otpExpires")
+      .sort({ "recyclerDetails.rating.average": -1 });
 
     res.json({
       success: true,
-      customer: {
-        id: customer._id,
-        email: customer.email,
-        phoneNumber: customer.phoneNumber,
-        address: customer.address,
-        customerDetails: customer.customerDetails,
-        isEmailVerified: customer.isEmailVerified,
-        isPhoneVerified: customer.isPhoneVerified,
-        createdAt: customer.createdAt,
-        lastLogin: customer.lastLogin,
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching profile:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching profile",
-      error: error.message,
-    });
-  }
-}
-
-// ==================== UPDATE CUSTOMER PROFILE ====================
-export async function updateCustomerProfile(req, res) {
-  try {
-    const userId = req.user.userId;
-    const updates = req.body;
-
-    // Fields that can be updated
-    const allowedUpdates = ["phoneNumber", "address", "customerDetails"];
-
-    const updateData = {};
-    for (let key of allowedUpdates) {
-      if (updates[key] !== undefined) {
-        updateData[key] = updates[key];
-      }
-    }
-
-    const customer = await User.findOneAndUpdate(
-      { _id: userId, role: "customer" },
-      updateData,
-      { new: true, runValidators: true },
-    ).select("-password");
-
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Profile updated successfully",
-      customer: {
-        id: customer._id,
-        email: customer.email,
-        phoneNumber: customer.phoneNumber,
-        address: customer.address,
-        customerDetails: customer.customerDetails,
-      },
-    });
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error updating profile",
-      error: error.message,
-    });
-  }
-}
-
-// ==================== UPDATE PROVIDER PROFILE ====================
-export async function updateProviderProfile(req, res) {
-  try {
-    const userId = req.user.userId;
-    const updates = req.body;
-
-    // Fields that can be updated
-    const allowedUpdates = [
-      "phoneNumber",
-      "address",
-      "providerDetails.description",
-      "providerDetails.specialization",
-      "providerDetails.serviceArea",
-      "providerDetails.workingHours",
-      "providerDetails.pricing",
-      "providerDetails.isAvailable",
-    ];
-
-    let updateData = {};
-
-    // Handle nested updates
-    if (updates.providerDetails) {
-      updateData["providerDetails.description"] =
-        updates.providerDetails.description;
-      updateData["providerDetails.specialization"] =
-        updates.providerDetails.specialization;
-      updateData["providerDetails.serviceArea"] =
-        updates.providerDetails.serviceArea;
-      updateData["providerDetails.workingHours"] =
-        updates.providerDetails.workingHours;
-      updateData["providerDetails.pricing"] = updates.providerDetails.pricing;
-      updateData["providerDetails.isAvailable"] =
-        updates.providerDetails.isAvailable;
-    }
-
-    if (updates.phoneNumber) updateData.phoneNumber = updates.phoneNumber;
-    if (updates.address) updateData.address = updates.address;
-
-    const provider = await User.findOneAndUpdate(
-      { _id: userId, role: "provider" },
-      updateData,
-      { new: true, runValidators: true },
-    ).select("-password -bankDetails -documents");
-
-    if (!provider) {
-      return res.status(404).json({
-        success: false,
-        message: "Provider not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Profile updated successfully",
-      provider: {
-        id: provider._id,
-        email: provider.email,
-        phoneNumber: provider.phoneNumber,
-        address: provider.address,
-        providerDetails: {
-          firstName: provider.providerDetails?.firstName,
-          lastName: provider.providerDetails?.lastName,
-          companyName: provider.providerDetails?.companyName,
-          specialization: provider.providerDetails?.specialization,
-          description: provider.providerDetails?.description,
-          serviceArea: provider.providerDetails?.serviceArea,
-          workingHours: provider.providerDetails?.workingHours,
-          pricing: provider.providerDetails?.pricing,
-          isAvailable: provider.providerDetails?.isAvailable,
-          rating: provider.providerDetails?.rating,
-          completedJobs: provider.providerDetails?.completedJobs,
+      count: recyclers.length,
+      recyclers: recyclers.map((recycler) => ({
+        id: recycler._id,
+        email: recycler.email,
+        firstName: recycler.firstName,
+        lastName: recycler.lastName,
+        phoneNumber: recycler.phoneNumber,
+        address: recycler.address,
+        recyclerDetails: {
+          companyName: recycler.recyclerDetails?.companyName,
+          recyclingTypes: recycler.recyclerDetails?.recyclingTypes,
+          pickupService: recycler.recyclerDetails?.pickupService,
+          pricing: recycler.recyclerDetails?.pricing,
+          serviceArea: recycler.recyclerDetails?.serviceArea,
+          rating: recycler.recyclerDetails?.rating,
+          totalRecycled: recycler.recyclerDetails?.totalRecycled,
+          isAvailable: recycler.recyclerDetails?.isAvailable,
         },
-      },
+      })),
     });
   } catch (error) {
-    console.error("Error updating profile:", error);
+    console.error("Error fetching recyclers:", error);
     res.status(500).json({
       success: false,
-      message: "Error updating profile",
+      message: "Error fetching recyclers",
       error: error.message,
     });
   }
 }
 
-// ==================== ADD REVIEW FOR PROVIDER ====================
+// ==================== GET RECYCLER BY ID ====================
+export async function getRecyclerById(req, res) {
+  try {
+    const { id } = req.params;
+
+    const recycler = await User.findOne({
+      _id: id,
+      role: "recycler",
+      isActive: true,
+    }).select("-password -bankDetails -otp -otpExpires");
+
+    if (!recycler) {
+      return res.status(404).json({
+        success: false,
+        message: "Recycler not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      recycler,
+    });
+  } catch (error) {
+    console.error("Error fetching recycler:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching recycler",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== ADD REVIEW ====================
 export async function addReview(req, res) {
   try {
     const { providerId } = req.params;
     const { rating, comment } = req.body;
     const customerId = req.user.userId;
 
-    // Validate rating
     if (rating < 1 || rating > 5) {
       return res.status(400).json({
         success: false,
@@ -881,7 +723,6 @@ export async function addReview(req, res) {
       });
     }
 
-    // Find provider
     const provider = await User.findOne({
       _id: providerId,
       role: "provider",
@@ -895,7 +736,6 @@ export async function addReview(req, res) {
       });
     }
 
-    // Add review
     const review = {
       customerId,
       rating,
@@ -905,7 +745,6 @@ export async function addReview(req, res) {
 
     provider.providerDetails.reviews.push(review);
 
-    // Update average rating
     const totalReviews = provider.providerDetails.reviews.length;
     const totalRating = provider.providerDetails.reviews.reduce(
       (sum, r) => sum + r.rating,
@@ -941,7 +780,7 @@ export async function getProviderReviews(req, res) {
       role: "provider",
     }).populate(
       "providerDetails.reviews.customerId",
-      "customerDetails.firstName customerDetails.lastName profileImage",
+      "firstName lastName profileImage",
     );
 
     if (!provider) {
@@ -962,7 +801,7 @@ export async function getProviderReviews(req, res) {
         date: review.date,
         customer: review.customerId
           ? {
-              name: `${review.customerId.customerDetails?.firstName} ${review.customerId.customerDetails?.lastName}`,
+              name: `${review.customerId.firstName} ${review.customerId.lastName}`,
               image: review.customerId.profileImage,
             }
           : null,
@@ -978,23 +817,292 @@ export async function getProviderReviews(req, res) {
   }
 }
 
-// ==================== VERIFY EMAIL ====================
-export async function verifyEmail(req, res) {
+// ==================== ADMIN: GET ALL USERS ====================
+export async function getAllUsers(req, res) {
   try {
-    const { token } = req.params;
+    const { role, status, search, page = 1, limit = 10 } = req.query;
 
-    // Verify token logic here
-    // This would typically check a verification token in the database
+    let query = {};
+
+    if (role) query.role = role;
+    if (status) {
+      query.isActive = status === "active";
+    }
+    if (search) {
+      query.$or = [
+        { email: { $regex: search, $options: "i" } },
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const users = await User.find(query)
+      .select("-password -otp -otpExpires")
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await User.countDocuments(query);
 
     res.json({
       success: true,
-      message: "Email verified successfully",
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
-    console.error("Error verifying email:", error);
+    console.error("Error fetching users:", error);
     res.status(500).json({
       success: false,
-      message: "Error verifying email",
+      message: "Error fetching users",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== ADMIN: GET USER BY ID ====================
+export async function getUserById(req, res) {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select(
+      "-password -otp -otpExpires",
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== ADMIN: UPDATE USER ====================
+export async function updateUserByAdmin(req, res) {
+  try {
+    const { userId } = req.params;
+    const { role, isActive, firstName, lastName, phoneNumber } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const changes = [];
+    const oldRole = user.role;
+    const oldStatus = user.isActive;
+
+    if (role && role !== user.role) {
+      user.role = role;
+      changes.push(`role changed from ${oldRole} to ${role}`);
+    }
+
+    if (isActive !== undefined && isActive !== user.isActive) {
+      user.isActive = isActive;
+      changes.push(`account ${isActive ? "activated" : "deactivated"}`);
+    }
+
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (phoneNumber) user.phoneNumber = phoneNumber;
+
+    await user.save();
+
+    if (changes.length > 0) {
+      await sendStatusChangeEmail(
+        user.email,
+        user.firstName,
+        changes.join(", "),
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "User updated successfully",
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    });
+  } catch (error) {
+    console.error("Admin update error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating user",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== ADMIN: DELETE USER (HARD DELETE) ====================
+export async function deleteUserByAdmin(req, res) {
+  try {
+    const { userId } = req.params;
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Prevent admin from deleting themselves
+    if (user._id.toString() === req.user.userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin cannot delete their own account",
+      });
+    }
+
+    // Hard delete - permanently remove from database
+    await User.findByIdAndDelete(userId);
+
+    // Send email notification (optional)
+    try {
+      await sendStatusChangeEmail(
+        user.email,
+        user.firstName,
+        "Your account has been permanently deleted by administrator",
+      );
+    } catch (emailError) {
+      console.error("Failed to send deletion email:", emailError);
+    }
+
+    res.json({
+      success: true,
+      message: `User ${user.email} has been permanently deleted`,
+    });
+  } catch (error) {
+    console.error("Admin delete error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting user",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== ADMIN: DEACTIVATE USER ====================
+export async function deactivateUser(req, res) {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.isActive = false;
+    await user.save();
+
+    await sendStatusChangeEmail(
+      user.email,
+      user.firstName,
+      "Your account has been deactivated by administrator",
+    );
+
+    res.json({
+      success: true,
+      message: "User deactivated successfully",
+    });
+  } catch (error) {
+    console.error("Deactivate user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deactivating user",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== ADMIN: ACTIVATE USER ====================
+export async function activateUser(req, res) {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.isActive = true;
+    await user.save();
+
+    await sendStatusChangeEmail(
+      user.email,
+      user.firstName,
+      "Your account has been activated by administrator",
+    );
+
+    res.json({
+      success: true,
+      message: "User activated successfully",
+    });
+  } catch (error) {
+    console.error("Activate user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error activating user",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== ✅ TEST EMAIL (SINGLE VERSION) ====================
+export async function sendTestEmail(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    await sendTestEmailService(email);
+
+    res.json({
+      success: true,
+      message: "Test email sent successfully",
+    });
+  } catch (error) {
+    console.error("Test email error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send test email",
       error: error.message,
     });
   }
@@ -1013,9 +1121,6 @@ export async function forgotPassword(req, res) {
         message: "User not found",
       });
     }
-
-    // Generate password reset token logic here
-    // Send email with reset link
 
     res.json({
       success: true,
@@ -1036,8 +1141,6 @@ export async function resetPassword(req, res) {
   try {
     const { token } = req.params;
     const { newPassword } = req.body;
-
-    // Verify token and update password logic here
 
     res.json({
       success: true,
@@ -1068,7 +1171,6 @@ export async function changePassword(req, res) {
       });
     }
 
-    // Check current password
     const isPasswordValid = await bcrypt.compare(
       currentPassword,
       user.password,
@@ -1081,7 +1183,6 @@ export async function changePassword(req, res) {
       });
     }
 
-    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
     await user.save();
@@ -1100,17 +1201,209 @@ export async function changePassword(req, res) {
   }
 }
 
-// ==================== ADMIN CHECK FUNCTION ====================
-export function isAdmin(req) {
+// ==================== BACKWARD COMPATIBILITY ====================
+export async function registerCustomerStep1(req, res) {
+  req.body.role = "customer";
+  return registerStep1(req, res);
+}
+
+export async function registerProviderStep1(req, res) {
+  req.body.role = "provider";
+  return registerStep1(req, res);
+}
+
+export async function registerCustomer(req, res) {
+  try {
+    const { email, password, phoneNumber, address, customerDetails } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      email,
+      password: hashedPassword,
+      firstName: customerDetails.firstName,
+      lastName: customerDetails.lastName,
+      role: "customer",
+      phoneNumber,
+      address,
+      customerDetails: {
+        firstName: customerDetails.firstName,
+        lastName: customerDetails.lastName,
+        dateOfBirth: customerDetails.dateOfBirth,
+        nic: customerDetails.nic,
+        bankDetails: customerDetails.bankDetails || {},
+        preferredContactMethod:
+          customerDetails.preferredContactMethod || "email",
+        loyaltyPoints: 0,
+        totalRepairs: 0,
+      },
+      isVerified: true,
+    });
+
+    await user.save();
+
+    sendWelcomeEmail(user.email, user.firstName, user.role).catch((err) =>
+      console.error("Welcome email failed:", err),
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Customer registered successfully!",
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Registration failed",
+      error: error.message,
+    });
+  }
+}
+
+export async function registerProvider(req, res) {
+  try {
+    const { email, password, phoneNumber, address, providerDetails } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
+
+    if (providerDetails.companyRegistrationNo) {
+      const existingCompany = await User.findOne({
+        "providerDetails.companyRegistrationNo":
+          providerDetails.companyRegistrationNo,
+      });
+      if (existingCompany) {
+        return res.status(400).json({
+          success: false,
+          message: "Company registration number already exists",
+        });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      email,
+      password: hashedPassword,
+      firstName: providerDetails.firstName,
+      lastName: providerDetails.lastName,
+      role: "provider",
+      phoneNumber,
+      address,
+      providerDetails: {
+        firstName: providerDetails.firstName,
+        lastName: providerDetails.lastName,
+        companyName: providerDetails.companyName,
+        companyPhone: providerDetails.companyPhone,
+        companyRegistrationNo: providerDetails.companyRegistrationNo,
+        specialization: providerDetails.specialization || [],
+        experience: providerDetails.experience || 0,
+        bankDetails: providerDetails.bankDetails || {},
+        description: providerDetails.description || "",
+        yearsInBusiness: providerDetails.yearsInBusiness || 0,
+        employeeCount: providerDetails.employeeCount || 1,
+        serviceArea: providerDetails.serviceArea || [],
+        workingHours: providerDetails.workingHours || {
+          monday: { open: "09:00", close: "18:00", isOpen: true },
+          tuesday: { open: "09:00", close: "18:00", isOpen: true },
+          wednesday: { open: "09:00", close: "18:00", isOpen: true },
+          thursday: { open: "09:00", close: "18:00", isOpen: true },
+          friday: { open: "09:00", close: "18:00", isOpen: true },
+          saturday: { open: "09:00", close: "13:00", isOpen: true },
+          sunday: { open: "00:00", close: "00:00", isOpen: false },
+        },
+        documents: providerDetails.documents || {},
+        pricing: providerDetails.pricing || {},
+        isAvailable: true,
+        rating: { average: 0, count: 0 },
+        completedJobs: 0,
+        reviews: [],
+      },
+      isVerified: true,
+    });
+
+    await user.save();
+
+    sendWelcomeEmail(user.email, user.firstName, user.role).catch((err) =>
+      console.error("Welcome email failed:", err),
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Provider registered successfully!",
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        companyName: user.providerDetails.companyName,
+      },
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Registration failed",
+      error: error.message,
+    });
+  }
+}
+
+export async function getCustomerProfile(req, res) {
+  return getProfile(req, res);
+}
+
+export async function updateCustomerProfile(req, res) {
+  return updateProfile(req, res);
+}
+
+export async function updateProviderProfile(req, res) {
+  return updateProfile(req, res);
+}
+
+export async function verifyEmail(req, res) {
+  try {
+    const { token } = req.params;
+
+    res.json({
+      success: true,
+      message: "Email verified successfully",
+    });
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error verifying email",
+      error: error.message,
+    });
+  }
+}
+
+// ==================== INTERNAL HELPER FUNCTIONS ====================
+function isAdmin(req) {
   if (req.user == null) {
     return false;
   }
-
-  const adminEmails = ["admin@example.com", "sachiumeshika98@gmail.com"];
-
-  if (adminEmails.includes(req.user.email)) {
-    return true;
-  }
-
-  return false;
+  return req.user.role === "admin";
 }

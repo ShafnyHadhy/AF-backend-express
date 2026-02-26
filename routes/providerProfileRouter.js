@@ -2,6 +2,7 @@ import express from "express";
 import { 
         approveProviderProfile, 
         createProviderProfile, 
+        deleteMyProviderProfile, 
         getAllProviderProfiles, 
         getMyProviderProfiles, 
         getNearbyProviders, 
@@ -13,10 +14,11 @@ const providerRouter = express.Router();
 
 providerRouter.post("/", createProviderProfile);
 providerRouter.get("/", getAllProviderProfiles);
+providerRouter.get("/nearby", getNearbyProviders);
 providerRouter.get("/me", getMyProviderProfiles);
 providerRouter.put("/:providerCode", updateMyProviderProfile);
 providerRouter.patch("/:id/approve", approveProviderProfile);
 providerRouter.patch("/:id/reject", rejectProviderProfile);
-providerRouter.get("/nearby", getNearbyProviders);
+providerRouter.delete("/:providerCode", deleteMyProviderProfile);
 
 export default providerRouter;

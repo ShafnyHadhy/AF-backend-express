@@ -69,6 +69,7 @@ export function loginUser(req, res) {
                             message: "Login successful!",
                             token: token,
                             user: {
+                                id: user._id,
                                 email: user.email,
                                 firstName: user.firstName,
                                 lastName: user.lastName,

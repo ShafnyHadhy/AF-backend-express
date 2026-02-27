@@ -1,22 +1,31 @@
 import express from "express";
 import { 
-        approveProviderProfile, 
-        createProviderProfile, 
-        getAllProviderProfiles, 
-        getMyProviderProfiles, 
-        getNearbyProviders, 
-        rejectProviderProfile, 
-        updateMyProviderProfile
-    } from "../controllers/providerController.js";
+            approveProviderProfile, 
+            createProviderProfile, 
+            deactivateMyProviderProfile, 
+            getAllProviderProfiles, 
+            getMyProviderProfiles, 
+            getNearbyProviders, 
+            rejectProviderProfile, 
+            restoreProviderProfile, 
+            updateMyProviderProfile
+        } 
+        from "../controllers/providerController.js";
 
 const providerRouter = express.Router();
 
-providerRouter.post("/", createProviderProfile);
-providerRouter.get("/", getAllProviderProfiles);
+providerRouter.get("/nearby", getNearbyProviders);
 providerRouter.get("/me", getMyProviderProfiles);
+providerRouter.get("/", getAllProviderProfiles);
+
+providerRouter.post("/", createProviderProfile);
+
+providerRouter.patch("/:providerCode/deactivate", deactivateMyProviderProfile);
+providerRouter.patch("/:providerCode/reactivate", restoreProviderProfile);
+
 providerRouter.put("/:providerCode", updateMyProviderProfile);
+
 providerRouter.patch("/:id/approve", approveProviderProfile);
 providerRouter.patch("/:id/reject", rejectProviderProfile);
-providerRouter.get("/nearby", getNearbyProviders);
 
 export default providerRouter;

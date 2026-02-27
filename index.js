@@ -14,7 +14,6 @@ app.use(cors());
 
 app.use(express.json());
 
-// JWT middleware
 app.use((req, res, next) => {
   let token = req.header("Authorization");
 
@@ -24,14 +23,13 @@ app.use((req, res, next) => {
     jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
       if (err) {
         console.log("JWT Error:", err.message);
-        // Don't send response here, just continue
       } else if (decoded) {
         req.user = decoded;
       }
     });
   }
 
-  next(); // Always continue - if token invalid, user will be undefined
+  next();
 });
 
 // MongoDB connection

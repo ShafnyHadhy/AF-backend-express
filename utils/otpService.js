@@ -11,14 +11,14 @@ export const generateOTP = () => {
   return crypto.randomInt(100000, 999999).toString();
 };
 
-// Generate numeric OTP with custom length (default 6)
+// Generate numeric OTP with custom length
 export const generateCustomOTP = (length = 6) => {
   const min = Math.pow(10, length - 1);
   const max = Math.pow(10, length) - 1;
   return crypto.randomInt(min, max).toString();
 };
 
-// Generate alphanumeric OTP (for special cases)
+// Generate alphanumeric OTP
 export const generateAlphaNumericOTP = (length = 6) => {
   return crypto
     .randomBytes(length)
@@ -27,7 +27,7 @@ export const generateAlphaNumericOTP = (length = 6) => {
     .toUpperCase();
 };
 
-// Send OTP email using SendGrid (Enhanced)
+// Send OTP email using SendGrid
 export const sendOTPEmail = async (
   email,
   otp,
@@ -166,7 +166,7 @@ export const sendOTPEmail = async (
   }
 };
 
-// Verify OTP (utility function - to be used in controllers)
+// Verify OTP
 export const verifyOTPCode = (userOtp, storedOtp, otpExpires) => {
   // Check if OTP matches
   if (userOtp !== storedOtp) {
@@ -190,9 +190,7 @@ export const verifyOTPCode = (userOtp, storedOtp, otpExpires) => {
   };
 };
 
-// Batch send OTP (for multiple recipients - use carefully)
 export const sendBulkOTP = async (recipients) => {
-  // recipients: [{ email, otp, firstName, purpose }]
   const promises = recipients.map((recipient) =>
     sendOTPEmail(
       recipient.email,
@@ -219,7 +217,6 @@ export const sendBulkOTP = async (recipients) => {
   return summary;
 };
 
-// For backward compatibility
 export default {
   generateOTP,
   generateCustomOTP,

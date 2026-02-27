@@ -183,7 +183,7 @@ export async function approveProviderProfile(req, res) {
         if (req.user.role !== "admin") {
             return res.status(403).json(
                 {
-                    message: "Forbidden: Admins only"
+                    message: "Only Admins have access to approve provider profiles"
                 }
             );
         }
@@ -226,7 +226,7 @@ export async function rejectProviderProfile(req, res) {
         if (req.user.role !== "admin") {
             return res.status(403).json(
                 {
-                    message: "Forbidden: Admins only"
+                    message: "Only Admins have access to reject provider profiles"
                 }
             );
         }
@@ -264,8 +264,6 @@ export async function getNearbyProviders(req, res) {
     try {
 
         const { lat, lng, radius = 10, type } = req.query;
-
-        console.log("Nearby search params:", { lat, lng, radius, type });
 
         if (!lat || !lng) {
             return res.status(400).json(

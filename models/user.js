@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    // ===== COMMON FIELDS =====
+    // ===== COMMON FIELDS ====
     email: {
       type: String,
       required: true,

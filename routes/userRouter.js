@@ -49,7 +49,7 @@ import {
 
 const router = express.Router();
 
-// Unified Registration with OTP (for all roles)
+// Unified Registration with OTP
 router.post("/register/step1", registerStep1);
 router.post("/verify-otp", verifyOTP);
 router.post("/resend-otp", resendOTP);
@@ -91,7 +91,7 @@ router.get("/recycler/dashboard", authenticate, isRecycler, (req, res) => {
 
 router.put("/recycler/profile", authenticate, isRecycler, updateProfile);
 
-// User management
+//User management
 router.get("/admin/users", authenticate, isAdmin, getAllUsers);
 router.get("/admin/users/:userId", authenticate, isAdmin, getUserById);
 router.put("/admin/users/:userId", authenticate, isAdmin, updateUserByAdmin);

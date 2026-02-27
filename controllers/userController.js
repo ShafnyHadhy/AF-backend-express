@@ -1028,7 +1028,7 @@ export async function forgotPassword(req, res) {
   }
 }
 
-// ==================== RESET PASSWORD ====================
+// ==================== RESET PASSWORD ==================
 export async function resetPassword(req, res) {
   try {
     const { token } = req.params;

@@ -396,7 +396,7 @@ export async function sendOTPEmail(email, otp, firstName) {
   });
 }
 
-// ==================== PASSWORD RESET EMAIL ====================
+// ==================== PASSWORD RESET EMAIL ===================
 export async function sendPasswordResetEmail(email, firstName, resetLink) {
   const subject = "🔑 Password Reset Request";
 

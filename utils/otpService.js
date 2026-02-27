@@ -168,7 +168,6 @@ export const sendOTPEmail = async (
 
 // Verify OTP
 export const verifyOTPCode = (userOtp, storedOtp, otpExpires) => {
-  // Check if OTP matches
   if (userOtp !== storedOtp) {
     return {
       valid: false,

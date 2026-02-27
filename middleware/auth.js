@@ -186,7 +186,7 @@ export function hasPermission(permission) {
   };
 }
 
-// ==================== OPTIONAL AUTH (doesn't require login) ====================
+// ==================== OPTIONAL AUTH (doesn't require login) ==================
 export function optionalAuth(req, res, next) {
   const token = req.header("Authorization")?.replace("Bearer ", "");
 

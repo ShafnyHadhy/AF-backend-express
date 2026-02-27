@@ -38,19 +38,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB connection
 const connectionString = process.env.MONGO_URI;
 
 mongoose
   .connect(connectionString)
   .then(() => {
-    console.log("✅ Database Connected!");
+    console.log("Database Connected!");
   })
   .catch((err) => {
-    console.log("❌ Database Connection Failed!", err);
+    console.log("Database Connection Failed!", err);
   });
 
-// ==================== USER MANAGEMENT ROUTES ONLY ====================
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/providers", providerRouter);
@@ -64,7 +62,6 @@ app.listen(5000,
     }
 );
 
-// ==================== TEST EMAIL ENDPOINT ====================
 app.get("/test-email", async (req, res) => {
   try {
     await sendEmail({
@@ -74,23 +71,22 @@ app.get("/test-email", async (req, res) => {
     });
     res.json({
       success: true,
-      message: "✅ Test email sent successfully!",
+      message: "Test email sent successfully!",
     });
   } catch (error) {
     console.error("Test email error:", error);
     res.status(500).json({
       success: false,
-      message: "❌ Email failed",
+      message: "Email failed",
       details: error.response?.body || error.message,
     });
   }
 });
 
-// ==================== HEALTH CHECK ====================
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "🚀 User Management API is running",
+    message: "User Management API is running",
     version: "1.0.0",
     endpoints: {
       users: "/api/users",
@@ -129,7 +125,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}!`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`👥 Roles: Customer, Provider, Recycler, Admin`);
-  console.log(`📧 Test email: http://localhost:${PORT}/test-email`);
 });

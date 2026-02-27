@@ -1,15 +1,16 @@
 import express from "express";
 import { 
-        approveProviderProfile, 
-        createProviderProfile, 
-        deactivateMyProviderProfile, 
-        getAllProviderProfiles, 
-        getMyProviderProfiles, 
-        getNearbyProviders, 
-        rejectProviderProfile, 
-        restoreProviderProfile, 
-        updateMyProviderProfile
-    } from "../controllers/providerController.js";
+            approveProviderProfile, 
+            createProviderProfile, 
+            deactivateMyProviderProfile, 
+            getAllProviderProfiles, 
+            getMyProviderProfiles, 
+            getNearbyProviders, 
+            rejectProviderProfile, 
+            restoreProviderProfile, 
+            updateMyProviderProfile
+        } 
+        from "../controllers/providerController.js";
 
 const providerRouter = express.Router();
 

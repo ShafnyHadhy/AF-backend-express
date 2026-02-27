@@ -9,6 +9,7 @@ import productRouter from "./routes/productRouter.js";
 import repairRouter from "./routes/repairRouter.js";
 import recycleRouter from "./routes/recycleRouter.js";
 import adminRouter from "./routes/adminRouter.js";
+import { sendEmail } from "./utils/emailService.js";
 
 dotenv.config();
 
@@ -19,61 +20,37 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-app.use(
-    (req, res, next) => {
-        const authHeader = req.header("Authorization");
+app.use((req, res, next) => {
+  let token = req.header("Authorization");
 
-        if (authHeader) {
-            const parts = authHeader.split(" ");
+  if (token != null) {
+    token = token.replace("Bearer ", "");
 
-            if (parts.length !== 2 || parts[0] !== "Bearer") {
-                return res.status(401).json({
-                    message: "Invalid Authorization header format. Expected 'Bearer <token>'"
-                });
-            }
+    jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
+      if (err) {
+        console.log("JWT Error:", err.message);
+      } else if (decoded) {
+        req.user = decoded;
+      }
+    });
+  }
 
-            const token = parts[1];
+  next();
+});
 
-            jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
-                if (err || decoded == null) {
-                    return res.status(401).json({
-                        message: "Invalid token! Please login again!"
-                    });
-                } else {
-                    req.user = decoded;
-                    next();
-                }
-            });
-        } else {
-            next();
-        }
-    }
-)
-
+// MongoDB connection
 const connectionString = process.env.MONGO_URI;
 
-mongoose.connect(connectionString, {
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-})
-    .then(
-        () => {
-            console.log("Database Connected!");
-        }
-    ).catch(
-        (err) => {
-            console.log("Database Connection Failed!");
-            console.error("Error Detail:", err.message);
+mongoose
+  .connect(connectionString)
+  .then(() => {
+    console.log("✅ Database Connected!");
+  })
+  .catch((err) => {
+    console.log("❌ Database Connection Failed!", err);
+  });
 
-            if (err.message.includes("ENOTFOUND")) {
-                console.error("DNS Error Detected: The server cannot resolve the MongoDB hostname.");
-                console.error("Try switching your DNS to Google (8.8.8.8) or Cloudflare (1.1.1.1).");
-            } else if (err.message.includes("ETIMEDOUT")) {
-                console.error("Connection Timed Out: Please check your internet connection and IP whitelisting in MongoDB Atlas.");
-            }
-        }
-    );
-
+// ==================== USER MANAGEMENT ROUTES ONLY ====================
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/providers", providerRouter);
@@ -86,3 +63,73 @@ app.listen(5000,
         console.log("Server is running on port 5000!");
     }
 );
+
+// ==================== TEST EMAIL ENDPOINT ====================
+app.get("/test-email", async (req, res) => {
+  try {
+    await sendEmail({
+      to: "sachiumeshika98@gmail.com",
+      subject: "Test Email from SendGrid",
+      html: "<h1>Hello!</h1><p>This is a test email from your project.</p>",
+    });
+    res.json({
+      success: true,
+      message: "✅ Test email sent successfully!",
+    });
+  } catch (error) {
+    console.error("Test email error:", error);
+    res.status(500).json({
+      success: false,
+      message: "❌ Email failed",
+      details: error.response?.body || error.message,
+    });
+  }
+});
+
+// ==================== HEALTH CHECK ====================
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "🚀 User Management API is running",
+    version: "1.0.0",
+    endpoints: {
+      users: "/api/users",
+      testEmail: "/test-email",
+    },
+    supportedRoles: ["customer", "provider", "recycler", "admin"],
+    features: [
+      "Registration with OTP",
+      "Login with JWT",
+      "Role-based dashboards",
+      "Profile management",
+      "Email notifications",
+      "Admin user management",
+    ],
+  });
+});
+
+// ==================== 404 HANDLER ====================
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found. Available endpoints: /api/users, /test-email, /",
+  });
+});
+
+// ==================== ERROR HANDLER ====================
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}!`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`👥 Roles: Customer, Provider, Recycler, Admin`);
+  console.log(`📧 Test email: http://localhost:${PORT}/test-email`);
+});

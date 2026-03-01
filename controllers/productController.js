@@ -78,13 +78,19 @@ export async function getProducts(req, res) {
     }
 
     try {
+        const totalCount = await Product.countDocuments({});
+        console.log(`Total products in database: ${totalCount}`);
+
+        console.log(`Querying products for ownerEmail: ${req.user.email}`);
         const products = await Product.find({
             ownerEmail: req.user.email
         });
 
+        console.log(`Found ${products.length} products for ${req.user.email}`);
         res.json(products);
 
     } catch (error) {
+        console.error(`Error fetching products: ${error.message}`);
         res.status(500).json({
             message: "Error fetching products"
         });

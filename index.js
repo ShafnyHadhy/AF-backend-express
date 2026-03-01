@@ -56,11 +56,11 @@ app.use("/api/repairs", repairRouter);
 app.use("/api/recycling", recycleRouter);
 app.use("/api/admin", adminRouter);
 
-app.listen(5000,
-    () => {
-        console.log("Server is running on port 5000!");
-    }
-);
+// app.listen(5000,
+//     () => {
+//         console.log("Server is running on port 5000!");
+//     }
+// );
 
 app.get("/test-email", async (req, res) => {
   try {
@@ -124,5 +124,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}!`);
+  console.log(`Server is running on port ${PORT}!`);
 });

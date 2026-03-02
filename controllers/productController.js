@@ -1,10 +1,8 @@
 import Product from '../models/product.js';
 import QRCode from "qrcode";
 
-/*
-    CREATE PRODUCT
-    Logged-in users can register their own product
-*/
+
+//  CREATE PRODUCT
 export async function createProduct(req, res) {
     console.log("!!! API-CONTROLLER: createProduct CALLED VERSION [2.0.1]");
     console.log("DEBUG: createProduct full body:", req.body);

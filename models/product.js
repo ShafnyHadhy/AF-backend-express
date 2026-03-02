@@ -5,7 +5,7 @@ console.log("!!! DB-MODEL: LOADING PRODUCT MODEL VERSION [2.0.1]");
 //LIFECYCLE SCHEMA
 const lifecycleSchema = new mongoose.Schema({
     eventType: {
-        type: String, // ("active", "sold", "recycled", etc.)
+        type: String, // ("active", "repair", "sold", "recycled", etc.)
         required: true
     },
     description: {

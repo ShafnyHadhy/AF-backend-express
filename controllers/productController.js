@@ -63,10 +63,8 @@ export async function createProduct(req, res) {
     }
 }
 
-/*
-    GET ALL PRODUCTS
-    User sees only their products
-*/
+
+  //  GET ALL PRODUCTS
 export async function getProducts(req, res) {
 
     if (!req.user) {
@@ -99,9 +97,8 @@ export async function getProducts(req, res) {
 
 
 
-/*
-    GET SINGLE PRODUCT
-*/
+//GET SINGLE PRODUCT
+
 export async function getProductById(req, res) {
 
     if (!req.user) {
@@ -133,9 +130,8 @@ export async function getProductById(req, res) {
 }
 
 
-/*
-    UPDATE PRODUCT
-*/
+//UPDATE PRODUCT
+
 export async function updateProduct(req, res) {
 
     if (!req.user) {
@@ -182,9 +178,7 @@ export async function updateProduct(req, res) {
 }
 
 
-/*
-    DELETE PRODUCT
-*/
+//DELETE PRODUCT
 export async function deleteProduct(req, res) {
 
     if (!req.user) {
@@ -217,9 +211,8 @@ export async function deleteProduct(req, res) {
     }
 }
 
-/*
-    ADD LIFECYCLE EVENT
-*/
+// ADD LIFECYCLE EVENT
+
 export async function addLifecycleEvent(req, res) {
 
     if (!req.user) {
@@ -265,10 +258,8 @@ export async function addLifecycleEvent(req, res) {
     }
 }
 
-/*
-    TOGGLE SELL STATUS
-    * Lists or unlists a product from the public marketplace.
-*/
+//TOGGLE SELL STATUS
+
 export async function toggleSellStatus(req, res) {
     if (!req.user) {
         return res.status(401).json({ message: "Please login first." });

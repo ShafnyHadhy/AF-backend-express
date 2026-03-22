@@ -344,7 +344,6 @@ const userSchema = new mongoose.Schema(
 );
 
 // ===== INDEXES for performance =====
-userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ "customerDetails.nic": 1 });
 userSchema.index({ "providerDetails.companyRegistrationNo": 1 });

@@ -1,10 +1,8 @@
 import Product from '../models/product.js';
 import QRCode from "qrcode";
 
-/*
-    CREATE PRODUCT
-    Logged-in users can register their own product
-*/
+
+//  CREATE PRODUCT
 export async function createProduct(req, res) {
     console.log("!!! API-CONTROLLER: createProduct CALLED VERSION [2.0.1]");
     console.log("DEBUG: createProduct full body:", req.body);
@@ -65,11 +63,10 @@ export async function createProduct(req, res) {
     }
 }
 
-/*
-    GET ALL PRODUCTS
-    User sees only their products
-*/
+
+  //  GET ALL PRODUCTS
 export async function getProducts(req, res) {
+
     if (!req.user) {
         return res.status(401).json({
             message: "Please login first."
@@ -97,9 +94,11 @@ export async function getProducts(req, res) {
 }
 
 
-/*
-    GET SINGLE PRODUCT
-*/
+
+
+
+//GET SINGLE PRODUCT
+
 export async function getProductById(req, res) {
 
     if (!req.user) {
@@ -131,9 +130,8 @@ export async function getProductById(req, res) {
 }
 
 
-/*
-    UPDATE PRODUCT
-*/
+//UPDATE PRODUCT
+
 export async function updateProduct(req, res) {
 
     if (!req.user) {
@@ -180,9 +178,7 @@ export async function updateProduct(req, res) {
 }
 
 
-/*
-    DELETE PRODUCT
-*/
+//DELETE PRODUCT
 export async function deleteProduct(req, res) {
 
     if (!req.user) {
@@ -215,9 +211,8 @@ export async function deleteProduct(req, res) {
     }
 }
 
-/*
-    ADD LIFECYCLE EVENT
-*/
+// ADD LIFECYCLE EVENT
+
 export async function addLifecycleEvent(req, res) {
 
     if (!req.user) {
@@ -263,9 +258,8 @@ export async function addLifecycleEvent(req, res) {
     }
 }
 
-/*
-    TOGGLE SELL STATUS
-*/
+//TOGGLE SELL STATUS
+
 export async function toggleSellStatus(req, res) {
     if (!req.user) {
         return res.status(401).json({ message: "Please login first." });
@@ -341,6 +335,7 @@ export async function buyProduct(req, res) {
     }
 
     try {
+        // 1. Find product that is actually for sale
         const product = await Product.findOne({
             productID: req.params.productID,
             isForSale: true
@@ -349,10 +344,11 @@ export async function buyProduct(req, res) {
         if (!product) {
             return res.status(404).json({ message: "Product not available for sale." });
         }
-
+        // 2. Mark as sold and remove from marketplace
         product.status = "sold";
         product.isForSale = false;
 
+        // 3. Record the transaction in the lifecycle
         product.lifecycle.push({
             eventType: "sold",
             description: `Product purchased by ${req.user.email}. Status set to SOLD.`
@@ -379,7 +375,7 @@ export async function resolveRepair(req, res) {
     }
 
     try {
-        const { resolution } = req.body; // "repaired" or "not repairable"
+        const { resolution } = req.body; // Expects "repaired" or "not repairable"
         const product = await Product.findOne({
             productID: req.params.productID,
             ownerEmail: req.user.email
@@ -388,10 +384,11 @@ export async function resolveRepair(req, res) {
         if (!product) {
             return res.status(404).json({ message: "Product not found" });
         }
-
+        // 1. Determine new status based on repair result
         const newStatus = resolution === "repaired" ? "active" : "not repairable";
         product.status = newStatus;
 
+        // 2. Add lifecycle record
         product.lifecycle.push({
             eventType: newStatus,
             description: resolution === "repaired"
@@ -428,8 +425,10 @@ export async function completeRecycling(req, res) {
         if (!product) {
             return res.status(404).json({ message: "Product not found" });
         }
-
+        // 1. Set status to 'recycled'
         product.status = "recycled";
+
+        // 2. Add final lifecycle milestone
         product.lifecycle.push({
             eventType: "recycled",
             description: "Product has been successfully recycled."

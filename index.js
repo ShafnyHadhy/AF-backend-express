@@ -56,7 +56,6 @@ app.use("/api/repairs", repairRouter);
 app.use("/api/recycling", recycleRouter);
 app.use("/api/admin", adminRouter);
 
-
 app.get("/test-email", async (req, res) => {
   try {
     await sendEmail({
@@ -119,5 +118,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(` Server is running on port ${PORT}!`);
+  console.log(`Server is running on port ${PORT}!`);
 });

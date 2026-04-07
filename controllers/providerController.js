@@ -15,8 +15,6 @@ export async function createProviderProfile(req, res) {
             return
         }
 
-        console.log(user);
-
         const lastProvider = await ProviderProfile.findOne().sort({ createdAt: -1 });
 
         let newProviderCode = "PROV0000001";
@@ -33,7 +31,7 @@ export async function createProviderProfile(req, res) {
 
         const newProviderProfile = new ProviderProfile(
             {
-                userId: req.user.id,
+                userId: req.user.userId,
                 providerCode: newProviderCode,
                 businessName: providerData.businessName,
                 providerType: providerData.providerType,
@@ -99,7 +97,7 @@ export async function getMyProviderProfiles(req, res) {
 
     try {
 
-        const userId = req.user.id;
+        const userId = req.user.userId;
 
         if (!userId) {
             res.status(401).json(
@@ -127,7 +125,7 @@ export async function updateMyProviderProfile(req, res) {
 
     try {
 
-        const userId = req.user.id;
+        const userId = req.user.userId;
         const providerCode = req.params.providerCode;
 
         if (!userId) {
@@ -314,7 +312,7 @@ export async function getNearbyProviders(req, res) {
 export async function deactivateMyProviderProfile(req, res) {
 
     try {
-        const userId = req.user?.id;
+        const userId = req.user?.userId;
         const providerCode = req.params.providerCode;
 
         if (!userId) {

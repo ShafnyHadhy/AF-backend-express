@@ -24,9 +24,9 @@ export const getRepairRequests = async (req, res) => {
     try {
         let query = {};
         if (req.user.role === 'user') {
-            query.user = req.user.id;
+            query.user = req.user.userId;
         } else if (req.user.role === 'provider') {
-            query = { $or: [{ provider: req.user.id }, { provider: null, status: 'Pending' }] };
+            query.provider = req.user.userId;
         }
         const requests = await RepairRequest.find(query).populate('user', 'firstName lastName email').populate('provider', 'firstName lastName email');
         res.json(requests);
@@ -34,6 +34,16 @@ export const getRepairRequests = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const getRepairRequestById = async (req, res) => {
+    try {
+        const request = await RepairRequest.findById(req.params.id).populate('user', 'firstName lastName email').populate('provider', 'firstName lastName email');
+        if (!request) return res.status(404).json({ message: 'Request not found' });
+        res.json(request);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
 
 export const updateRepairStatus = async (req, res) => {
     try {

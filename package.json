@@ -4,10 +4,14 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "start": "nodemon index.js",
     "seed": "node scripts/seedData.js",
-    "fix-qrs": "node scripts/updateQRCodes.js"
+    "fix-qrs": "node scripts/updateQRCodes.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/integration",
+    "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit"
   },
   "keywords": [],
   "author": "",
@@ -23,5 +27,10 @@
     "mongoose": "^9.2.0",
     "nodemon": "^3.1.11",
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
+    "supertest": "^7.2.2"
   }
 }

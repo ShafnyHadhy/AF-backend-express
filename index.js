@@ -1,6 +1,5 @@
 import express from "express";
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken";
 import cors from "cors";
 import dotenv from "dotenv";
 import userRouter from "./routes/userRouter.js";
@@ -10,34 +9,18 @@ import repairRouter from "./routes/repairRouter.js";
 import recycleRouter from "./routes/recycleRouter.js";
 import adminRouter from "./routes/adminRouter.js";
 import { sendEmail } from "./utils/emailService.js";
+import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 dotenv.config();
 
 const app = express();
 
+// ==================== BASIC MIDDLEWARE ====================
 app.use(cors());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-app.use((req, res, next) => {
-  let token = req.header("Authorization");
-
-  if (token != null) {
-    token = token.replace("Bearer ", "");
-
-    jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
-      if (err) {
-        console.log("JWT Error:", err.message);
-      } else if (decoded) {
-        req.user = decoded;
-      }
-    });
-  }
-
-  next();
-});
-
+// ==================== DATABASE CONNECTION ====================
 const connectionString = process.env.MONGO_URI;
 
 mongoose
@@ -49,6 +32,7 @@ mongoose
     console.log("Database Connection Failed!", err);
   });
 
+// ==================== ROUTES ====================
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/providers", providerRouter);
@@ -56,12 +40,7 @@ app.use("/api/repairs", repairRouter);
 app.use("/api/recycling", recycleRouter);
 app.use("/api/admin", adminRouter);
 
-// app.listen(5000,
-//     () => {
-//         console.log("Server is running on port 5000!");
-//     }
-// );
-
+// ==================== TEST ROUTES ====================
 app.get("/test-email", async (req, res) => {
   try {
     await sendEmail({
@@ -83,6 +62,7 @@ app.get("/test-email", async (req, res) => {
   }
 });
 
+// ==================== HOME ROUTE ====================
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -90,6 +70,11 @@ app.get("/", (req, res) => {
     version: "1.0.0",
     endpoints: {
       users: "/api/users",
+      products: "/api/products",
+      providers: "/api/providers",
+      repairs: "/api/repairs",
+      recycling: "/api/recycling",
+      admin: "/api/admin",
       testEmail: "/test-email",
     },
     supportedRoles: ["customer", "provider", "recycler", "admin"],
@@ -105,23 +90,12 @@ app.get("/", (req, res) => {
 });
 
 // ==================== 404 HANDLER ====================
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found. Available endpoints: /api/users, /test-email, /",
-  });
-});
+app.use(notFound);
 
-// ==================== ERROR HANDLER ====================
-app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined,
-  });
-});
+// ==================== GLOBAL ERROR HANDLER ====================
+app.use(errorHandler);
 
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);

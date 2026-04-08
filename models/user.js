@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    // ===== COMMON FIELDS ====
     email: {
       type: String,
       required: true,
@@ -45,7 +44,6 @@ const userSchema = new mongoose.Schema(
     },
 
     // ===== ACCOUNT STATUS =====
-
     isActive: {
       type: Boolean,
       default: true,
@@ -66,7 +64,7 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
     },
 
-    // ===== OTP =====
+    // ===== OTP for Email Verification =====
     isVerified: {
       type: Boolean,
       default: false,
@@ -76,6 +74,26 @@ const userSchema = new mongoose.Schema(
     },
     otpExpires: {
       type: Date,
+    },
+
+    // ===== OTP for Password Reset (NEW) =====
+    resetOTP: {
+      type: String,
+      default: null,
+    },
+    resetOTPExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // ===== Old Password Reset Fields =====
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
     },
 
     // ===== CUSTOMER FIELDS =====
@@ -111,16 +129,11 @@ const userSchema = new mongoose.Schema(
 
     // ===== PROVIDER FIELDS =====
     providerDetails: {
-      // Personal Information
       firstName: String,
       lastName: String,
-
-      // Company Information
       companyName: String,
       companyPhone: String,
       companyRegistrationNo: String,
-
-      // Professional Details
       specialization: [
         {
           type: String,
@@ -139,8 +152,6 @@ const userSchema = new mongoose.Schema(
         },
       ],
       experience: Number,
-
-      // Bank Details
       bankDetails: {
         accountHolderName: String,
         bankName: String,
@@ -151,8 +162,6 @@ const userSchema = new mongoose.Schema(
           enum: ["savings", "current"],
         },
       },
-
-      // Business Details
       description: String,
       yearsInBusiness: Number,
       employeeCount: {
@@ -165,8 +174,6 @@ const userSchema = new mongoose.Schema(
           distance: Number,
         },
       ],
-
-      // Working Hours
       workingHours: {
         monday: { open: String, close: String, isOpen: Boolean },
         tuesday: { open: String, close: String, isOpen: Boolean },
@@ -176,8 +183,6 @@ const userSchema = new mongoose.Schema(
         saturday: { open: String, close: String, isOpen: Boolean },
         sunday: { open: String, close: String, isOpen: Boolean },
       },
-
-      // Documents
       documents: {
         businessRegCert: String,
         qualificationDocs: [
@@ -188,8 +193,6 @@ const userSchema = new mongoose.Schema(
           },
         ],
       },
-
-      // Performance
       rating: {
         average: { type: Number, default: 0 },
         count: { type: Number, default: 0 },
@@ -202,15 +205,11 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: true,
       },
-
-      // Pricing
       pricing: {
         consultationFee: Number,
         hourlyRate: Number,
         minServiceCharge: Number,
       },
-
-      // Reviews
       reviews: [
         {
           customerId: {
@@ -227,18 +226,13 @@ const userSchema = new mongoose.Schema(
       ],
     },
 
-    // ===== RECYCLER FIELDS ===== (New)
+    // ===== RECYCLER FIELDS =====
     recyclerDetails: {
-      // Personal Information
       firstName: String,
       lastName: String,
-
-      // Company Information
       companyName: String,
       companyPhone: String,
       companyRegistrationNo: String,
-
-      // Recycler Specific
       recyclingTypes: [
         {
           type: String,
@@ -282,12 +276,10 @@ const userSchema = new mongoose.Schema(
         },
       ],
       totalRecycled: {
-        type: Number, // in kg
+        type: Number,
         default: 0,
       },
-      serviceArea: [String], // Cities they serve
-
-      // Bank Details
+      serviceArea: [String],
       bankDetails: {
         accountHolderName: String,
         bankName: String,
@@ -298,8 +290,6 @@ const userSchema = new mongoose.Schema(
           enum: ["savings", "current"],
         },
       },
-
-      // Performance
       rating: {
         average: { type: Number, default: 0 },
         count: { type: Number, default: 0 },
@@ -310,7 +300,7 @@ const userSchema = new mongoose.Schema(
       },
     },
 
-    // ===== ADMIN FIELDS ===== (New)
+    // ===== ADMIN FIELDS =====
     adminDetails: {
       firstName: String,
       lastName: String,
@@ -351,6 +341,7 @@ userSchema.index({ "providerDetails.specialization": 1 });
 userSchema.index({ "recyclerDetails.companyRegistrationNo": 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ isVerified: 1 });
+userSchema.index({ resetOTP: 1 });
 
 // ===== VIRTUAL for full name =====
 userSchema.virtual("fullName").get(function () {
@@ -358,7 +349,6 @@ userSchema.virtual("fullName").get(function () {
     return `${this.firstName} ${this.lastName}`;
   }
 
-  // Fallback to role-specific names
   if (this.role === "customer" && this.customerDetails?.firstName) {
     return `${this.customerDetails.firstName} ${this.customerDetails.lastName}`;
   }
@@ -381,6 +371,8 @@ userSchema.methods.toJSON = function () {
   delete obj.password;
   delete obj.otp;
   delete obj.otpExpires;
+  delete obj.resetPasswordToken;
+  delete obj.resetPasswordExpires;
   return obj;
 };
 

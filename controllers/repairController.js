@@ -47,19 +47,21 @@ export const getRepairRequestById = async (req, res) => {
 
 export const updateRepairStatus = async (req, res) => {
     try {
-        const { status, note, ...otherDetails } = req.body;
+        const { status, note, pickupDate } = req.body;
+
         const request = await RepairRequest.findById(req.params.id);
+
         if (!request) return res.status(404).json({ message: 'Request not found' });
 
-        if (req.user.role === 'provider' && status === 'Accepted') {
-            request.provider = req.user.id;
-        }
-
-        // Apply any other dynamic fields from the body (like pickupDate)
-        Object.assign(request, otherDetails);
+        if (pickupDate) request.pickupDate = pickupDate;
 
         request.status = status;
         request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
+
+        if (req.user.role === 'provider' && status === 'Accepted') {
+            request.provider = req.user.userId;
+        }
+
         await request.save();
         res.json(request);
     } catch (error) {

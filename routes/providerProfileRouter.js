@@ -11,21 +11,22 @@ import {
             updateMyProviderProfile
         } 
         from "../controllers/providerController.js";
+import { authenticate } from "../middleware/auth.js";
 
 const providerRouter = express.Router();
 
 providerRouter.get("/nearby", getNearbyProviders);
-providerRouter.get("/me", getMyProviderProfiles);
+providerRouter.get("/me", authenticate, getMyProviderProfiles);
 providerRouter.get("/", getAllProviderProfiles);
 
-providerRouter.post("/", createProviderProfile);
+providerRouter.post("/", authenticate, createProviderProfile);
 
-providerRouter.patch("/:providerCode/deactivate", deactivateMyProviderProfile);
-providerRouter.patch("/:providerCode/reactivate", restoreProviderProfile);
+providerRouter.patch("/:providerCode/deactivate", authenticate, deactivateMyProviderProfile);
+providerRouter.patch("/:providerCode/reactivate", authenticate, restoreProviderProfile);
 
-providerRouter.put("/:providerCode", updateMyProviderProfile);
+providerRouter.put("/:providerCode", authenticate, updateMyProviderProfile);
 
-providerRouter.patch("/:id/approve", approveProviderProfile);
-providerRouter.patch("/:id/reject", rejectProviderProfile);
+providerRouter.patch("/:id/approve", authenticate, approveProviderProfile);
+providerRouter.patch("/:id/reject", authenticate, rejectProviderProfile);
 
 export default providerRouter;

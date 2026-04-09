@@ -4,7 +4,7 @@ export const createRepairRequest = async (req, res) => {
     try {
         const { productName, category, description, quantity, image, location } = req.body;
         const newRequest = new RepairRequest({
-            user: req.user.id,
+            user: req.user.userId,
             productName,
             category,
             description,

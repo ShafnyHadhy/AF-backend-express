@@ -1,12 +1,12 @@
 import express from 'express';
 import { getDashboardStats, getAllRequestsReport, updateRequest, deleteRequest } from '../controllers/adminController.js';
-import { authorize } from '../middleware/authMiddleware.js';
+import { authenticate, isAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/stats', authorize(['admin']), getDashboardStats);
-router.get('/report', authorize(['admin']), getAllRequestsReport);
-router.put('/requests/:type/:id', authorize(['admin']), updateRequest);
-router.delete('/requests/:type/:id', authorize(['admin']), deleteRequest);
+router.get('/stats', authenticate, isAdmin, getDashboardStats);
+router.get('/report', authenticate, isAdmin, getAllRequestsReport);
+router.put('/requests/:type/:id', authenticate, isAdmin, updateRequest);
+router.delete('/requests/:type/:id', authenticate, isAdmin, deleteRequest);
 
 export default router;

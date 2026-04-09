@@ -12,7 +12,6 @@ import {
     getSettings,
     updateSettings
 } from '../controllers/adminController.js';
-import { authorize } from '../middleware/authMiddleware.js';
 import { authenticate, isAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -23,18 +22,18 @@ router.put('/requests/:type/:id', authenticate, isAdmin, updateRequest);
 router.delete('/requests/:type/:id', authenticate, isAdmin, deleteRequest);
 
 // Users
-router.get('/users', authorize(['admin']), getUsers);
-router.put('/users/:id/role', authorize(['admin']), updateUserRole);
-router.put('/users/:id/block', authorize(['admin']), toggleBlockUser);
+router.get('/users', authenticate, isAdmin, getUsers);
+router.put('/users/:id/role', authenticate, isAdmin, updateUserRole);
+router.put('/users/:id/block', authenticate, isAdmin, toggleBlockUser);
 
 // Providers
-router.get('/providers', authorize(['admin']), getProviders);
+router.get('/providers', authenticate, isAdmin, getProviders);
 
 // Activity Logs
-router.get('/logs', authorize(['admin']), getActivityLogs);
+router.get('/logs', authenticate, isAdmin, getActivityLogs);
 
 // Settings
-router.get('/settings', authorize(['admin']), getSettings);
-router.put('/settings', authorize(['admin']), updateSettings);
+router.get('/settings', authenticate, isAdmin, getSettings);
+router.put('/settings', authenticate, isAdmin, updateSettings);
 
 export default router;

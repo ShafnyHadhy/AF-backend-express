@@ -13,6 +13,7 @@ import {
     updateSettings
 } from '../controllers/adminController.js';
 import { authorize } from '../middleware/authMiddleware.js';
+import { authenticate, isAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 

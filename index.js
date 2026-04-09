@@ -8,6 +8,7 @@ import recycleRouter from "./routes/recycleRouter.js";
 import adminRouter from "./routes/adminRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
+import providerRouter from "./routes/providerProfileRouter.js";
 
 dotenv.config();
 
@@ -15,7 +16,8 @@ const app = express();
 
 app.use(cors()); // Enable CORS for all routes and origins
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use(
     (req, res, next) => {
@@ -85,9 +87,8 @@ app.use("/api/repairs", repairRouter);
 app.use("/api/recycling", recycleRouter);
 app.use("/api/admin", adminRouter);
 
-
-app.listen(5001,
+app.listen(5000,
     () => {
-        console.log("Server is running on port 5001!");
+        console.log("Server is running on port 5000!");
     }
 );

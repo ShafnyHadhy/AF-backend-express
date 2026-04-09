@@ -1,4 +1,3 @@
-// middleware/validationMiddleware.js
 import {
   validateRegistrationData,
   validateLoginData,

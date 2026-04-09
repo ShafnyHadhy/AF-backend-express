@@ -39,7 +39,7 @@ export const registerStep1 = catchAsync(async (req, res) => {
     throw new AppError("Email already registered", 400);
   }
 
-  // Check company registration uniqueness for provider/recycler
+  // Check company registration uniqueness for provider
   if (role === "provider" && providerDetails?.companyRegistrationNo) {
     const existingCompany = await User.findOne({
       "providerDetails.companyRegistrationNo":
@@ -50,6 +50,7 @@ export const registerStep1 = catchAsync(async (req, res) => {
     }
   }
 
+  // Check company registration uniqueness for recycler
   if (role === "recycler" && recyclerDetails?.companyRegistrationNo) {
     const existingCompany = await User.findOne({
       "recyclerDetails.companyRegistrationNo":
@@ -577,7 +578,7 @@ export const getAllUsers = catchAsync(async (req, res) => {
   if (search) {
     query.$or = [
       { email: { $regex: search, $options: "i" } },
-      { firstName: { $regex: search, $options: i } },
+      { firstName: { $regex: search, $options: "i" } },
       { lastName: { $regex: search, $options: "i" } },
     ];
   }
@@ -811,7 +812,7 @@ export const requestPasswordResetOTP = catchAsync(async (req, res) => {
   }
 });
 
-// Step 2: Verify OTP and Reset Password
+// Verify OTP and Reset Password
 export const verifyOTPAndResetPassword = catchAsync(async (req, res) => {
   const { email, otp, newPassword, confirmPassword } = req.body;
 

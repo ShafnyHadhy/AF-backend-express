@@ -1,5 +1,3 @@
-// utils/validation.js
-
 export const validateEmail = (email) => {
   if (!email || typeof email !== "string") {
     return { isValid: false, message: "Email is required" };

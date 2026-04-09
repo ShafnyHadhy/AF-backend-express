@@ -4,7 +4,7 @@ export const createRepairRequest = async (req, res) => {
     try {
         const { productName, category, description, quantity, image, location } = req.body;
         const newRequest = new RepairRequest({
-            user: req.user.id,
+            user: req.user.userId,
             productName,
             category,
             description,
@@ -24,9 +24,9 @@ export const getRepairRequests = async (req, res) => {
     try {
         let query = {};
         if (req.user.role === 'user') {
-            query.user = req.user.id;
+            query.user = req.user.userId;
         } else if (req.user.role === 'provider') {
-            query = { $or: [{ provider: req.user.id }, { provider: null, status: 'Pending' }] };
+            query.provider = req.user.userId;
         }
         const requests = await RepairRequest.find(query).populate('user', 'firstName lastName email').populate('provider', 'firstName lastName email');
         res.json(requests);
@@ -35,21 +35,33 @@ export const getRepairRequests = async (req, res) => {
     }
 };
 
+export const getRepairRequestById = async (req, res) => {
+    try {
+        const request = await RepairRequest.findById(req.params.id).populate('user', 'firstName lastName email').populate('provider', 'firstName lastName email');
+        if (!request) return res.status(404).json({ message: 'Request not found' });
+        res.json(request);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
 export const updateRepairStatus = async (req, res) => {
     try {
-        const { status, note, ...otherDetails } = req.body;
+        const { status, note, pickupDate } = req.body;
+
         const request = await RepairRequest.findById(req.params.id);
+
         if (!request) return res.status(404).json({ message: 'Request not found' });
 
-        if (req.user.role === 'provider' && status === 'Accepted') {
-            request.provider = req.user.id;
-        }
-
-        // Apply any other dynamic fields from the body (like pickupDate)
-        Object.assign(request, otherDetails);
+        if (pickupDate) request.pickupDate = pickupDate;
 
         request.status = status;
         request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
+
+        if (req.user.role === 'provider' && status === 'Accepted') {
+            request.provider = req.user.userId;
+        }
+
         await request.save();
         res.json(request);
     } catch (error) {

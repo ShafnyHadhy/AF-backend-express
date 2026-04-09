@@ -93,19 +93,58 @@ export const registerStep1 = catchAsync(async (req, res) => {
   }
 
   if (role === "provider" && providerDetails) {
+    const validSpecializations = [
+      "mobile",
+      "laptop",
+      "desktop",
+      "tablet",
+      "printer",
+      "cctv",
+      "network",
+      "tv",
+      "camera",
+      "other",
+    ];
+
+    let cleanedSpecialization = [];
+    if (Array.isArray(providerDetails.specialization)) {
+      cleanedSpecialization = providerDetails.specialization.filter((spec) =>
+        validSpecializations.includes(spec),
+      );
+    } else if (typeof providerDetails.specialization === "string") {
+      cleanedSpecialization = providerDetails.specialization
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => validSpecializations.includes(s));
+    }
+
+    let cleanedServiceArea = [];
+    if (Array.isArray(providerDetails.serviceArea)) {
+      cleanedServiceArea = providerDetails.serviceArea.map((area) => {
+        if (typeof area === "string") {
+          return { city: area, distance: 0 };
+        }
+        return area;
+      });
+    } else if (typeof providerDetails.serviceArea === "string") {
+      cleanedServiceArea = providerDetails.serviceArea
+        .split(",")
+        .map((city) => ({ city: city.trim(), distance: 0 }));
+    }
+
     userData.providerDetails = {
       firstName: providerDetails.firstName || firstName,
       lastName: providerDetails.lastName || lastName,
       companyName: providerDetails.companyName,
       companyPhone: providerDetails.companyPhone,
       companyRegistrationNo: providerDetails.companyRegistrationNo,
-      specialization: providerDetails.specialization || [],
-      experience: providerDetails.experience || 0,
+      specialization: cleanedSpecialization,
+      experience: Number(providerDetails.experience) || 0,
       bankDetails: providerDetails.bankDetails || {},
       description: providerDetails.description || "",
-      yearsInBusiness: providerDetails.yearsInBusiness || 0,
-      employeeCount: providerDetails.employeeCount || 1,
-      serviceArea: providerDetails.serviceArea || [],
+      yearsInBusiness: Number(providerDetails.yearsInBusiness) || 0,
+      employeeCount: Number(providerDetails.employeeCount) || 1,
+      serviceArea: cleanedServiceArea,
       workingHours: providerDetails.workingHours || {
         monday: { open: "09:00", close: "18:00", isOpen: true },
         tuesday: { open: "09:00", close: "18:00", isOpen: true },
@@ -125,6 +164,15 @@ export const registerStep1 = catchAsync(async (req, res) => {
   }
 
   if (role === "recycler" && recyclerDetails) {
+    let recyclerServiceArea = [];
+    if (Array.isArray(recyclerDetails.serviceArea)) {
+      recyclerServiceArea = recyclerDetails.serviceArea;
+    } else if (typeof recyclerDetails.serviceArea === "string") {
+      recyclerServiceArea = recyclerDetails.serviceArea
+        .split(",")
+        .map((city) => city.trim());
+    }
+
     userData.recyclerDetails = {
       firstName: recyclerDetails.firstName || firstName,
       lastName: recyclerDetails.lastName || lastName,
@@ -137,7 +185,7 @@ export const registerStep1 = catchAsync(async (req, res) => {
       pricing: recyclerDetails.pricing || { pricePerKg: 0 },
       certifications: recyclerDetails.certifications || [],
       totalRecycled: 0,
-      serviceArea: recyclerDetails.serviceArea || [],
+      serviceArea: recyclerServiceArea,
       bankDetails: recyclerDetails.bankDetails || {},
       isAvailable: true,
       rating: { average: 0, count: 0 },

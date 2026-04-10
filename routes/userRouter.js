@@ -35,6 +35,8 @@ import {
 
   // Test Email
   sendTestEmail,
+  uploadProfileImage,
+  deleteProfileImage,
 } from "../controllers/userController.js";
 
 import {
@@ -56,8 +58,15 @@ import {
   validateResetPasswordWithOTP,
   validateResendOTP,
 } from "../middleware/validationMiddleware.js";
+import { uploadSingle } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
+
+// Upload image
+router.post("/profile/image", authenticate, uploadSingle, uploadProfileImage);
+
+// Delete image
+router.delete("/profile/image", authenticate, deleteProfileImage);
 
 // Unified Registration with OTP
 router.post("/register/step1", validateRegistration, registerStep1);

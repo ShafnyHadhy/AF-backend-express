@@ -1028,3 +1028,52 @@ function isAdmin(req) {
   }
   return req.user.role === "admin";
 }
+
+// ==================== upload image ====================
+export const uploadProfileImage = catchAsync(async (req, res) => {
+  if (!req.file) {
+    throw new AppError("Please upload an image", 400);
+  }
+
+  const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+  const user = await User.findByIdAndUpdate(
+    req.user.userId,
+    { profileImage: imageUrl },
+    { new: true },
+  ).select("-password");
+
+  res.json({
+    success: true,
+    message: "Image uploaded successfully!",
+    profileImage: user.profileImage,
+    user: user,
+  });
+});
+
+// Delete profile image
+export const deleteProfileImage = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user.userId);
+
+  if (!user || !user.profileImage) {
+    throw new AppError("No profile image found", 404);
+  }
+
+  // Extract filename from URL
+  const filename = user.profileImage.split("/uploads/")[1];
+  const filePath = path.join("uploads", filename);
+
+  // Delete file from system
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+
+  // Remove from database
+  user.profileImage = null;
+  await user.save();
+
+  res.json({
+    success: true,
+    message: "Profile image deleted successfully",
+  });
+});

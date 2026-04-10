@@ -28,6 +28,19 @@ export const registerStep1 = catchAsync(async (req, res) => {
     adminDetails,
   } = req.body;
 
+  // Helper function to convert string to array (move to top)
+  const convertToArray = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item !== "");
+    }
+    return [];
+  };
+
   // Check required fields
   if (!email || !password || !firstName || !lastName || !phoneNumber || !role) {
     throw new AppError("Missing required fields", 400);
@@ -67,6 +80,10 @@ export const registerStep1 = catchAsync(async (req, res) => {
   // Generate OTP (3 minutes)
   const otp = generateOTP();
   const otpExpires = new Date(Date.now() + 3 * 60 * 1000);
+  console.log("\n" + "=".repeat(50));
+  console.log("OTP:", otp);
+  console.log("OTP Expires At:", otpExpires);
+  console.log("=");
 
   // Base user data
   const userData = {
@@ -164,14 +181,12 @@ export const registerStep1 = catchAsync(async (req, res) => {
   }
 
   if (role === "recycler" && recyclerDetails) {
-    let recyclerServiceArea = [];
-    if (Array.isArray(recyclerDetails.serviceArea)) {
-      recyclerServiceArea = recyclerDetails.serviceArea;
-    } else if (typeof recyclerDetails.serviceArea === "string") {
-      recyclerServiceArea = recyclerDetails.serviceArea
-        .split(",")
-        .map((city) => city.trim());
-    }
+    // Use the convertToArray function defined above
+    const recyclingTypesArray = convertToArray(recyclerDetails.recyclingTypes);
+    const collectionPointsArray = convertToArray(
+      recyclerDetails.collectionPoints,
+    );
+    const serviceAreaArray = convertToArray(recyclerDetails.serviceArea);
 
     userData.recyclerDetails = {
       firstName: recyclerDetails.firstName || firstName,
@@ -179,13 +194,13 @@ export const registerStep1 = catchAsync(async (req, res) => {
       companyName: recyclerDetails.companyName,
       companyPhone: recyclerDetails.companyPhone,
       companyRegistrationNo: recyclerDetails.companyRegistrationNo,
-      recyclingTypes: recyclerDetails.recyclingTypes || [],
-      collectionPoints: recyclerDetails.collectionPoints || [],
+      recyclingTypes: recyclingTypesArray,
+      collectionPoints: collectionPointsArray,
       pickupService: recyclerDetails.pickupService || { available: false },
       pricing: recyclerDetails.pricing || { pricePerKg: 0 },
       certifications: recyclerDetails.certifications || [],
       totalRecycled: 0,
-      serviceArea: recyclerServiceArea,
+      serviceArea: serviceAreaArray,
       bankDetails: recyclerDetails.bankDetails || {},
       isAvailable: true,
       rating: { average: 0, count: 0 },
@@ -267,14 +282,21 @@ export const verifyOTP = catchAsync(async (req, res) => {
 export const resendOTP = catchAsync(async (req, res) => {
   const { email } = req.body;
 
+  if (!email) {
+    throw new AppError("Email is required", 400);
+  }
+
   const user = await User.findOne({ email });
 
   if (!user) {
-    throw new AppError("User not found", 404);
+    return res.json({
+      success: true,
+      message: "If your email is registered, a new OTP has been sent.",
+    });
   }
 
   if (user.isVerified) {
-    throw new AppError("Email already verified", 400);
+    throw new AppError("Email already verified. Please login.", 400);
   }
 
   const otp = generateOTP();
@@ -282,13 +304,28 @@ export const resendOTP = catchAsync(async (req, res) => {
 
   user.otp = otp;
   user.otpExpires = otpExpires;
-  await user.save();
+  await user.save({ validateBeforeSave: false });
 
-  await sendOTPEmail(email, otp, user.firstName);
+  console.log("\n" + "=".repeat(50));
+  console.log("RESEND OTP");
+  console.log("=".repeat(50));
+  console.log(`Email: ${email}`);
+  console.log(`OTP: ${otp}`);
+  console.log(`Expires: ${otpExpires}`);
+  console.log("=".repeat(50) + "\n");
+
+  try {
+    await sendOTPEmail(email, otp, user.firstName);
+    console.log("✅ OTP email sent successfully");
+  } catch (emailError) {
+    console.error("❌ Failed to send OTP email:", emailError.message);
+  }
 
   res.json({
     success: true,
-    message: "OTP resent successfully",
+    message: "A new OTP has been sent to your email.",
+
+    ...(process.env.NODE_ENV !== "production" && { devOTP: otp }),
   });
 });
 
@@ -331,11 +368,6 @@ export const login = catchAsync(async (req, res) => {
     process.env.JWT_SECRET_KEY,
     { expiresIn: "24h" },
   );
-
-  sendLoginNotification({
-    email: user.email,
-    firstName: user.firstName,
-  }).catch((err) => console.error("Login email failed:", err));
 
   const userResponse = {
     id: user._id,

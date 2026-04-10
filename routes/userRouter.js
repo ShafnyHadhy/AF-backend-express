@@ -71,7 +71,7 @@ router.delete("/profile/image", authenticate, deleteProfileImage);
 // Unified Registration with OTP
 router.post("/register/step1", validateRegistration, registerStep1);
 router.post("/verify-otp", validateOTPCode, verifyOTP);
-router.post("/resend-otp", validateOTPCode, resendOTP);
+router.post("/resend-otp", validateResendOTP, resendOTP);
 
 // Login
 router.post("/login", validateLogin, login);

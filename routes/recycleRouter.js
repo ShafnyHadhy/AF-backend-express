@@ -1,6 +1,6 @@
 import express from 'express';
 import { createRecycleRequest, getRecycleRequests, updateRecycleStatus } from '../controllers/recycleController.js';
-import { authenticate } from '../middleware/authMiddleware.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 

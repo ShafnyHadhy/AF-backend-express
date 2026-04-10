@@ -15,8 +15,6 @@ export async function createProviderProfile(req, res) {
             return
         }
 
-        console.log(user);
-
         const lastProvider = await ProviderProfile.findOne().sort({ createdAt: -1 });
 
         let newProviderCode = "PROV0000001";
@@ -33,7 +31,7 @@ export async function createProviderProfile(req, res) {
 
         const newProviderProfile = new ProviderProfile(
             {
-                userId: req.user.id,
+                userId: req.user.userId,
                 providerCode: newProviderCode,
                 businessName: providerData.businessName,
                 providerType: providerData.providerType,
@@ -99,7 +97,7 @@ export async function getMyProviderProfiles(req, res) {
 
     try {
 
-        const userId = req.user.id;
+        const userId = req.user.userId;
 
         if (!userId) {
             res.status(401).json(
@@ -127,7 +125,7 @@ export async function updateMyProviderProfile(req, res) {
 
     try {
 
-        const userId = req.user.id;
+        const userId = req.user.userId;
         const providerCode = req.params.providerCode;
 
         if (!userId) {
@@ -183,7 +181,7 @@ export async function approveProviderProfile(req, res) {
         if (req.user.role !== "admin") {
             return res.status(403).json(
                 {
-                    message: "Forbidden: Admins only"
+                    message: "Only Admins have access to approve provider profiles"
                 }
             );
         }
@@ -226,7 +224,7 @@ export async function rejectProviderProfile(req, res) {
         if (req.user.role !== "admin") {
             return res.status(403).json(
                 {
-                    message: "Forbidden: Admins only"
+                    message: "Only Admins have access to reject provider profiles"
                 }
             );
         }
@@ -264,8 +262,6 @@ export async function getNearbyProviders(req, res) {
     try {
 
         const { lat, lng, radius = 10, type } = req.query;
-
-        console.log("Nearby search params:", { lat, lng, radius, type });
 
         if (!lat || !lng) {
             return res.status(400).json(
@@ -310,5 +306,79 @@ export async function getNearbyProviders(req, res) {
                 error: error.message,
             }
         );
+    }
+}
+
+export async function deactivateMyProviderProfile(req, res) {
+
+    try {
+        const userId = req.user?.userId;
+        const providerCode = req.params.providerCode;
+
+        if (!userId) {
+            return res.status(401).json({
+                message: "Unauthorized user...",
+            });
+        }
+
+        const existing = await ProviderProfile.findOne({ providerCode });
+
+        if (!existing) {
+            return res.status(404).json({
+                message: "Provider profile not found",
+            });
+        }
+
+        // Check ownership
+        if (existing.userId.toString() !== userId.toString()) {
+            return res.status(403).json({
+                message: "Forbidden: Not your profile",
+            });
+        }
+
+         const updated = await ProviderProfile.findOneAndUpdate(
+            { providerCode },
+            { isActive: false },
+            { new: true }
+        );
+
+        return res.status(200).json({
+            message: "Provider profile deactivated successfully!",
+            providerProfile: updated,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Error deleting provider profile",
+            error: error.message,
+        });
+    }
+}
+
+export async function restoreProviderProfile(req, res) {
+
+    try {
+        const { providerCode } = req.params;
+
+        const updated = await ProviderProfile.findOneAndUpdate(
+            { providerCode },
+            { isActive: true },
+            { new: true }
+        );
+
+        if (!updated) {
+            return res.status(404).json({ message: "Provider not found" });
+        }
+
+        res.status(200).json({
+            message: "Provider profile restored successfully!",
+            providerProfile: updated,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Error restoring provider profile",
+            error: error.message,
+        });
     }
 }

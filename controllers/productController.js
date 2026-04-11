@@ -241,13 +241,12 @@ export async function addLifecycleEvent(req, res) {
 
         // Map eventType labels to actual product status values
         const statusMap = {
-            "under repair": "repair request",
-            "repair finished": "active",
-            "repair request": "repair request",
-            "send to recycle": "recycling request",
-            "recycling request": "recycling request",
-            "recycling finished": "recycled",
+            "repaired": "active",
+            "repair request": "under repair",
+            "under repair": "under repair",
             "recycled": "recycled",
+            "recycling request": "recycling request",
+            "listed on marketplace": "active",
             "marketplace listing": "active",
             "marketplace unlisting": "active",
             "damaged": "damaged",
@@ -317,8 +316,9 @@ export async function toggleSellStatus(req, res) {
 
         // Add lifecycle event
         product.lifecycle.push({
-            eventType: isForSale ? "Marketplace Listing" : "Marketplace Unlisting",
-            description: isForSale ? `Product listed for sale at $${price}` : "Product removed from marketplace"
+            eventType: isForSale ? "Listed on Marketplace" : "Unlisted from Marketplace",
+            description: isForSale ? `Product listed for sale at Rs. ${price}` : "Product removed from marketplace",
+            performedBy: req.user.email
         });
 
         await product.save();
@@ -426,10 +426,11 @@ export async function resolveRepair(req, res) {
 
         // 2. Add lifecycle record
         product.lifecycle.push({
-            eventType: newStatus,
+            eventType: resolution === "repaired" ? "Repaired" : "Not Repairable",
             description: resolution === "repaired"
                 ? "Repair completed. Product returned to active status."
-                : "Repair failed. Product marked as not repairable."
+                : "Repair failed. Product marked as not repairable.",
+            performedBy: req.user.email
         });
 
         await product.save();
@@ -466,8 +467,9 @@ export async function completeRecycling(req, res) {
 
         // 2. Add final lifecycle milestone
         product.lifecycle.push({
-            eventType: "recycled",
-            description: "Product has been successfully recycled."
+            eventType: "Recycled",
+            description: "Product has been successfully recycled.",
+            performedBy: req.user.email
         });
 
         await product.save();

@@ -235,27 +235,11 @@ const userSchema = new mongoose.Schema(
       recyclingTypes: [
         {
           type: String,
-          enum: [
-            "mobile",
-            "laptop",
-            "desktop",
-            "tablet",
-            "printer",
-            "cctv",
-            "network",
-            "tv",
-            "camera",
-            "other",
-          ],
         },
       ],
       collectionPoints: [
         {
-          name: String,
-          address: String,
-          city: String,
-          contactNumber: String,
-          operatingHours: String,
+          type: String,
         },
       ],
       pickupService: {

@@ -234,15 +234,46 @@ export async function addLifecycleEvent(req, res) {
             });
         }
 
-        const { eventType, description } = req.body;
+        const { eventType, description, location, performedBy } = req.body;
 
+        // Map eventType labels to actual product status values
+        const statusMap = {
+            "under repair": "repair request",
+            "repair finished": "active",
+            "repair request": "repair request",
+            "send to recycle": "recycling request",
+            "recycling request": "recycling request",
+            "recycling finished": "recycled",
+            "recycled": "recycled",
+            "marketplace listing": "active",
+            "marketplace unlisting": "active",
+            "damaged": "damaged",
+            "active": "active",
+            "sold": "sold",
+            "registered": "registered",
+            "in transit": "in transit",
+            "distributed": "distributed",
+        };
+
+        // Push lifecycle event
         product.lifecycle.push({
             eventType,
-            description
+            description: description || `Product marked as: ${eventType}`,
+            location: location || "",
+            performedBy: performedBy || req.user.email || "User"
         });
 
-        // Optional: Update status automatically
-        product.status = eventType;
+        // Update product status if mapping exists
+        if (statusMap[eventType.toLowerCase()]) {
+            product.status = statusMap[eventType.toLowerCase()];
+        }
+
+        // Handle marketplace listing flag
+        if (eventType.toLowerCase() === "marketplace listing") {
+            product.isForSale = true;
+        } else if (eventType.toLowerCase() === "marketplace unlisting") {
+            product.isForSale = false;
+        }
 
         await product.save();
 
@@ -253,10 +284,12 @@ export async function addLifecycleEvent(req, res) {
 
     } catch (error) {
         res.status(500).json({
-            message: "Error adding lifecycle event"
+            message: "Error adding lifecycle event",
+            error: error.message
         });
     }
 }
+
 
 //TOGGLE SELL STATUS
 

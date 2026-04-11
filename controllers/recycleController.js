@@ -1,11 +1,20 @@
+import ProviderProfile from '../models/providerProfile.js';
 import RecycleRequest from '../models/RecycleRequest.js';
 
 export const createRecycleRequest = async (req, res) => {
     try {
-        const { productName, category, description, quantity, image, location } = req.body;
+
+        const { productName, category, description, quantity, image, location, provider } = req.body;
+
+        const providerProfile = await ProviderProfile.findById({ _id: provider });
+        if (!providerProfile) {
+            return res.status(400).json({ message: 'Invalid provider ID' });
+        }
+
         const newRequest = new RecycleRequest({
-            user: req.user.id,
+            user: req.user.userId,
             productName,
+            provider: providerProfile.userId,
             category,
             description,
             quantity,

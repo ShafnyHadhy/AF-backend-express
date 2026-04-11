@@ -1,0 +1,16 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+    - duration: 60
+      arrivalRate: 10
+
+scenarios:
+  - flow:
+      - get:
+          url: "/api/providers"
+
+  - flow:
+      - get:
+          url: "/api/providers/nearby?lat=7.8731&lng=80.7718&radius=10"

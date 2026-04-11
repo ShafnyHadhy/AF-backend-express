@@ -82,7 +82,30 @@ export const getRepairRequestById = async (req, res) => {
     }
 }
 
-// UPDATE (Full Update + Status)
+export const updateRepairStatus = async (req, res) => {
+    try {
+        const { status, note, pickupDate } = req.body;
+
+        const request = await RepairRequest.findById(req.params.id);
+
+        if (!request) return res.status(404).json({ message: 'Request not found' });
+
+        if (pickupDate) request.pickupDate = pickupDate;
+
+        request.status = status;
+        request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
+
+        if (req.user.role === 'provider' && status === 'Accepted') {
+            request.provider = req.user.userId;
+        }
+
+        await request.save();
+        res.json(request);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const updateRepairRequest = async (req, res) => {
     try {
         const { status, note, pickupDate, ...otherData } = req.body;

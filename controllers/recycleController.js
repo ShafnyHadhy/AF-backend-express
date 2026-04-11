@@ -74,15 +74,24 @@ export const getRecycleRequestById = async (req, res) => {
 
 export const updateRecycleStatus = async (req, res) => {
     try {
-        const request = await RecycleRequest.findById(req.params.id)
-            .populate('user', 'firstName lastName email');
-        
+        const { status, note, ...otherDetails } = req.body;
+        const request = await RecycleRequest.findById(req.params.id);
         if (!request) return res.status(404).json({ message: 'Recycling request not found' });
+
+        // Apply any other dynamic fields from the body (like pickupDate)
+        Object.assign(request, otherDetails);
+
+        request.status = status;
+        request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
+        await request.save();
         res.json(request);
     } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(400).json({ message: 'Invalid ID format' });
+        }
         res.status(500).json({ message: error.message });
     }
-}
+};
 
 // UPDATE (Full Update + Status)
 export const updateRecycleRequest = async (req, res) => {

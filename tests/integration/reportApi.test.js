@@ -15,6 +15,14 @@ describe('Admin Report API Integration Tests', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockAdminToken = generateTestToken('admin-123', 'admin');
+
+        // Explicitly spy on methods
+        jest.spyOn(RepairRequest, 'countDocuments');
+        jest.spyOn(RepairRequest, 'aggregate');
+        jest.spyOn(RepairRequest, 'find');
+        jest.spyOn(RecycleRequest, 'countDocuments');
+        jest.spyOn(RecycleRequest, 'aggregate');
+        jest.spyOn(RecycleRequest, 'find');
     });
 
     describe('GET /api/admin/stats', () => {
@@ -54,11 +62,21 @@ describe('Admin Report API Integration Tests', () => {
         it('should generate a combined report with chart data', async () => {
             RepairRequest.find.mockReturnValue({
                 populate: jest.fn().mockReturnThis(),
-                sort: jest.fn().mockResolvedValue([{ productName: 'Repair Item', _doc: { status: 'Pending' } }])
+                then: jest.fn().mockImplementation(function(onSuccess) {
+                    return Promise.resolve([{ _doc: { status: 'Pending' }, status: 'Pending' }]).then(onSuccess);
+                }),
+                catch: jest.fn()
             });
+            RepairRequest.countDocuments.mockResolvedValue(10);
+            RepairRequest.aggregate.mockResolvedValue([]);
+            RecycleRequest.countDocuments.mockResolvedValue(5);
+            RecycleRequest.aggregate.mockResolvedValue([]);
             RecycleRequest.find.mockReturnValue({
                 populate: jest.fn().mockReturnThis(),
-                sort: jest.fn().mockResolvedValue([{ productName: 'Recycle Item', _doc: { status: 'Pending' } }])
+                then: jest.fn().mockImplementation(function(onSuccess) {
+                    return Promise.resolve([{ _doc: { status: 'Recycled' }, status: 'Recycled' }]).then(onSuccess);
+                }),
+                catch: jest.fn()
             });
 
             const response = await request(app)

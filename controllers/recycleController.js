@@ -52,7 +52,7 @@ export const createRecycleRequest = async (req, res) => {
 export const getRecycleRequests = async (req, res) => {
     try {
         let query = {};
-        if (req.user.role === 'user') {
+        if (req.user.role === 'user' || req.user.role === 'customer') {
             query.user = req.user.userId;
         } else if (req.user.role === 'provider') {
             query.provider = req.user.userId;

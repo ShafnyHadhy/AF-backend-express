@@ -1,4 +1,4 @@
-# Service Provider Management System – Backend API
+# ReVolve – Backend Application
 
 ## Project Overview
 

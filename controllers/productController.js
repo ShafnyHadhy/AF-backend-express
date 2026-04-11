@@ -153,10 +153,13 @@ export async function updateProduct(req, res) {
             });
         }
 
+        // ✅ FIX: Capture old status BEFORE Object.assign overwrites it
+        const previousStatus = product.status;
+
         Object.assign(product, req.body);
 
-        // Add lifecycle event ONLY if status changed
-        if (req.body.status && req.body.status !== product.status) {
+        // Add lifecycle event ONLY if status actually changed
+        if (req.body.status && req.body.status !== previousStatus) {
             product.lifecycle.push({
                 eventType: req.body.status,
                 description: `Product status updated to ${req.body.status}`

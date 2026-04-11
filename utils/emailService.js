@@ -396,40 +396,117 @@ export async function sendOTPEmail(email, otp, firstName) {
   });
 }
 
-// ==================== PASSWORD RESET EMAIL ===================
-export async function sendPasswordResetEmail(email, firstName, resetLink) {
-  const subject = "🔑 Password Reset Request";
+// ==================== PASSWORD RESET OTP EMAIL ====================
+export async function sendPasswordResetOTPEmail(email, firstName, otp) {
+  const subject = "🔐 Password Reset OTP - E Waste Management";
 
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset OTP</title>
         <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f4f4; }
-            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; }
-            .header { background: #f59e0b; color: white; padding: 30px; text-align: center; }
-            .content { padding: 30px; text-align: center; }
-            .button { background: #f59e0b; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; font-size: 16px; }
-            .warning { color: #666; font-size: 14px; margin-top: 20px; }
-            .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px; }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                max-width: 550px;
+                margin: 30px auto;
+                background: white;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            }
+            .header {
+                background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 28px;
+            }
+            .content {
+                padding: 35px;
+                text-align: center;
+            }
+            .otp-box {
+                background: #fff3e0;
+                border: 2px dashed #f59e0b;
+                padding: 25px;
+                margin: 25px 0;
+                border-radius: 12px;
+            }
+            .otp-code {
+                font-size: 52px;
+                font-weight: bold;
+                letter-spacing: 12px;
+                color: #f59e0b;
+                font-family: monospace;
+            }
+            .timer-note {
+                color: #ea580c;
+                font-size: 14px;
+                margin-top: 15px;
+                font-weight: bold;
+            }
+            .warning {
+                background: #fef2e8;
+                padding: 15px;
+                border-radius: 8px;
+                color: #666;
+                font-size: 13px;
+                margin-top: 20px;
+            }
+            .footer {
+                background: #f8f9fa;
+                padding: 20px;
+                text-align: center;
+                color: #666;
+                font-size: 12px;
+                border-top: 1px solid #eee;
+            }
+            .button {
+                display: inline-block;
+                padding: 10px 20px;
+                background: #f59e0b;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                margin-top: 15px;
+            }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>Password Reset</h1>
+                <h1>🔑 Password Reset</h1>
             </div>
             <div class="content">
-                <p>Hello <strong>${firstName}</strong>,</p>
+                <p style="font-size: 16px;">Hello <strong>${firstName}</strong>,</p>
                 <p>We received a request to reset your password.</p>
                 
-                <a href="${resetLink}" class="button">Reset Password</a>
+                <div class="otp-box">
+                    <div class="otp-code">${otp}</div>
+                </div>
                 
-                <p class="warning">This link will expire in 1 hour.</p>
-                <p>If you didn't request this, please ignore this email.</p>
+                <p class="timer-note">⏰ This OTP will expire in <strong>10 minutes</strong></p>
+                
+                <div class="warning">
+                    <strong>⚠️ Security Alert:</strong> Never share this OTP with anyone!
+                </div>
+                
+                <p style="margin-top: 25px;">If you didn't request this, please ignore this email.</p>
             </div>
             <div class="footer">
-                <p>Best regards,<br>Your Team</p>
+                <p>Best regards,<br><strong>E Waste Management Team</strong></p>
+                <p>© ${new Date().getFullYear()} E Waste Management. All rights reserved.</p>
             </div>
         </div>
     </body>

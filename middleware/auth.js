@@ -30,7 +30,7 @@ export function authenticate(req, res, next) {
   }
 }
 
-// ==================== ROLE-SPECIFIC MIDDLEWARE ====================
+// ==================== ROLE BASE SPECIFIC MIDDLEWARE ====================
 
 // Check if user is CUSTOMER only
 export function isCustomer(req, res, next) {

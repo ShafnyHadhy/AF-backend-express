@@ -28,13 +28,15 @@ import {
   deactivateUser,
   activateUser,
 
-  // Password Management
-  forgotPassword,
-  resetPassword,
-  changePassword,
+  // OTP Based Password Management
+  requestPasswordResetOTP,
+  verifyOTPAndResetPassword,
+  resendResetOTP,
 
   // Test Email
   sendTestEmail,
+  uploadProfileImage,
+  deleteProfileImage,
 } from "../controllers/userController.js";
 
 import {
@@ -43,55 +45,114 @@ import {
   isCustomer,
   isProvider,
   isRecycler,
-  isAdminOrOwner,
   optionalAuth,
 } from "../middleware/auth.js";
 
+// Validation Middleware Imports
+import {
+  validateRegistration,
+  validateLogin,
+  validateOTPCode,
+  validateProfileUpdate,
+  validateForgotPassword,
+  validateResetPasswordWithOTP,
+  validateResendOTP,
+} from "../middleware/validationMiddleware.js";
+import { uploadSingle } from "../middleware/uploadMiddleware.js";
+
 const router = express.Router();
 
+// Upload image
+router.post("/profile/image", authenticate, uploadSingle, uploadProfileImage);
+
+// Delete image
+router.delete("/profile/image", authenticate, deleteProfileImage);
+
 // Unified Registration with OTP
-router.post("/register/step1", registerStep1);
-router.post("/verify-otp", verifyOTP);
-router.post("/resend-otp", resendOTP);
+router.post("/register/step1", validateRegistration, registerStep1);
+router.post("/verify-otp", validateOTPCode, verifyOTP);
+router.post("/resend-otp", validateResendOTP, resendOTP);
 
 // Login
-router.post("/login", login);
+router.post("/login", validateLogin, login);
 
-// Public profile viewing
+// Step 1: Request OTP for password reset
+router.post(
+  "/forgot-password",
+  validateForgotPassword,
+  requestPasswordResetOTP,
+);
+
+// Step 2: Verify OTP and reset password (one call)
+router.post(
+  "/reset-password-with-otp",
+  validateResetPasswordWithOTP,
+  verifyOTPAndResetPassword,
+);
+
+// Resend OTP
+router.post("/resend-reset-otp", validateResendOTP, resendResetOTP);
+
+// ==================== PROFILE MANAGEMENT ROUTES ====================
+router.get("/profile", authenticate, getProfile);
+router.put("/profile", authenticate, validateProfileUpdate, updateProfile);
+
+// ==================== PUBLIC PROFILE VIEWING ROUTES ====================
 router.get("/providers", getAllProviders);
 router.get("/providers/:id", getProviderById);
 router.get("/recyclers", getAllRecyclers);
 router.get("/recyclers/:id", getRecyclerById);
 
-// Password management
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password/:token", resetPassword);
-
-// Test email (public for demo)
+// ==================== TEST EMAIL ROUTE ====================
 router.post("/test-email", sendTestEmail);
 
-// Profile management (works for all roles)
-router.get("/profile", authenticate, getProfile);
-router.put("/profile", authenticate, updateProfile);
-
-// Password change
-router.post("/change-password", authenticate, changePassword);
-
+// ==================== ROLE-SPECIFIC DASHBOARDS ====================
 router.get("/customer/dashboard", authenticate, isCustomer, (req, res) => {
-  res.json({ success: true, message: "Customer dashboard" });
+  res.json({
+    success: true,
+    message: "Customer dashboard",
+    user: {
+      id: req.user.userId,
+      email: req.user.email,
+      role: req.user.role,
+    },
+  });
 });
 
 router.get("/provider/dashboard", authenticate, isProvider, (req, res) => {
-  res.json({ success: true, message: "Provider dashboard" });
+  res.json({
+    success: true,
+    message: "Provider dashboard",
+    user: {
+      id: req.user.userId,
+      email: req.user.email,
+      role: req.user.role,
+    },
+  });
 });
 
 router.get("/recycler/dashboard", authenticate, isRecycler, (req, res) => {
-  res.json({ success: true, message: "Recycler dashboard" });
+  res.json({
+    success: true,
+    message: "Recycler dashboard",
+    user: {
+      id: req.user.userId,
+      email: req.user.email,
+      role: req.user.role,
+    },
+  });
 });
 
-router.put("/recycler/profile", authenticate, isRecycler, updateProfile);
+// Recycler profile update
+router.put(
+  "/recycler/profile",
+  authenticate,
+  isRecycler,
+  validateProfileUpdate,
+  updateProfile,
+);
 
-//User management
+// ==================== ADMIN USER MANAGEMENT ROUTES ====================
 router.get("/admin/users", authenticate, isAdmin, getAllUsers);
 router.get("/admin/users/:userId", authenticate, isAdmin, getUserById);
 router.put("/admin/users/:userId", authenticate, isAdmin, updateUserByAdmin);
@@ -107,18 +168,28 @@ router.put(
   isAdmin,
   activateUser,
 );
-
-// Delete user
 router.delete("/admin/users/:userId", authenticate, isAdmin, deleteUserByAdmin);
 
-// Dashboard
+// Admin dashboard
 router.get("/admin/dashboard", authenticate, isAdmin, (req, res) => {
-  res.json({ success: true, message: "Admin dashboard" });
+  res.json({
+    success: true,
+    message: "Admin dashboard",
+    admin: {
+      id: req.user.userId,
+      email: req.user.email,
+      role: req.user.role,
+    },
+  });
 });
 
+// ==================== PUBLIC ROUTES WITH OPTIONAL AUTH ====================
 router.get("/featured-providers", optionalAuth, (req, res) => {
-  // This works with or without login
-  res.json({ success: true, message: "Featured providers" });
+  res.json({
+    success: true,
+    message: "Featured providers",
+    providers: [],
+  });
 });
 
 export default router;

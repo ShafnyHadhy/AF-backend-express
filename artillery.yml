@@ -14,3 +14,13 @@ scenarios:
   - flow:
       - get:
           url: "/api/providers/nearby?lat=7.8731&lng=80.7718&radius=10"
+
+  - name: "Fetch Marketplace Products"
+    flow:
+      - get:
+          url: "/api/products/marketplace"
+
+  - name: "Fetch Public Product Details"
+    flow:
+      - get:
+          url: "/api/products/public/PRD-12345"

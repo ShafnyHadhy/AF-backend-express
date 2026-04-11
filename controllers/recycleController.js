@@ -27,7 +27,10 @@ export const getRecycleRequests = async (req, res) => {
         let query = {};
         
         // Role-based scoping
-        if (req.user.role === 'user') {
+        if (req.user.role === 'admin') {
+            // Admin can see all
+        } else {
+            // Default: Users only see their own requests
             query.user = req.user.userId;
         }
 

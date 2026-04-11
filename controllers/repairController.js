@@ -27,10 +27,13 @@ export const getRepairRequests = async (req, res) => {
         let query = {};
         
         // Role-based scoping
-        if (req.user.role === 'user') {
-            query.user = req.user.userId;
+        if (req.user.role === 'admin') {
+            // Admin can see all, no query filter added unless specified in query params
         } else if (req.user.role === 'provider') {
             query.provider = req.user.userId;
+        } else {
+            // Default: Users only see their own requests
+            query.user = req.user.userId;
         }
 
         // Filters

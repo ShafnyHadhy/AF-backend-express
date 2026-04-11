@@ -180,8 +180,6 @@ export const validateRegistrationData = (data) => {
       if (!data.recyclerDetails.companyRegistrationNo) {
         errors.push("Company registration number is required");
       }
-      // Recycler details validation - don't require arrays to be non-empty
-      // Just check if they exist (can be empty arrays)
     }
   }
 

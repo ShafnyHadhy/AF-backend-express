@@ -15,6 +15,12 @@ describe('Recycle API Integration Tests', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockUserToken = generateTestToken('user-123', 'customer');
+
+        // Explicitly spy on methods
+        jest.spyOn(RecycleRequest, 'find');
+        jest.spyOn(RecycleRequest, 'findById');
+        jest.spyOn(RecycleRequest, 'findByIdAndDelete');
+        jest.spyOn(ProviderProfile, 'findById');
     });
 
     describe('POST /api/recycling', () => {

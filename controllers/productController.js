@@ -153,10 +153,13 @@ export async function updateProduct(req, res) {
             });
         }
 
+        // ✅ FIX: Capture old status BEFORE Object.assign overwrites it
+        const previousStatus = product.status;
+
         Object.assign(product, req.body);
 
-        // Add lifecycle event ONLY if status changed
-        if (req.body.status && req.body.status !== product.status) {
+        // Add lifecycle event ONLY if status actually changed
+        if (req.body.status && req.body.status !== previousStatus) {
             product.lifecycle.push({
                 eventType: req.body.status,
                 description: `Product status updated to ${req.body.status}`
@@ -234,15 +237,45 @@ export async function addLifecycleEvent(req, res) {
             });
         }
 
-        const { eventType, description } = req.body;
+        const { eventType, description, location, performedBy } = req.body;
 
+        // Map eventType labels to actual product status values
+        const statusMap = {
+            "repaired": "active",
+            "repair request": "under repair",
+            "under repair": "under repair",
+            "recycled": "recycled",
+            "recycling request": "recycling request",
+            "listed on marketplace": "active",
+            "marketplace listing": "active",
+            "marketplace unlisting": "active",
+            "damaged": "damaged",
+            "active": "active",
+            "sold": "sold",
+            "registered": "registered",
+            "in transit": "in transit",
+            "distributed": "distributed",
+        };
+
+        // Push lifecycle event
         product.lifecycle.push({
             eventType,
-            description
+            description: description || `Product marked as: ${eventType}`,
+            location: location || "",
+            performedBy: performedBy || req.user.email || "User"
         });
 
-        // Optional: Update status automatically
-        product.status = eventType;
+        // Update product status if mapping exists
+        if (statusMap[eventType.toLowerCase()]) {
+            product.status = statusMap[eventType.toLowerCase()];
+        }
+
+        // Handle marketplace listing flag
+        if (eventType.toLowerCase() === "marketplace listing") {
+            product.isForSale = true;
+        } else if (eventType.toLowerCase() === "marketplace unlisting") {
+            product.isForSale = false;
+        }
 
         await product.save();
 
@@ -253,10 +286,12 @@ export async function addLifecycleEvent(req, res) {
 
     } catch (error) {
         res.status(500).json({
-            message: "Error adding lifecycle event"
+            message: "Error adding lifecycle event",
+            error: error.message
         });
     }
 }
+
 
 //TOGGLE SELL STATUS
 
@@ -281,8 +316,9 @@ export async function toggleSellStatus(req, res) {
 
         // Add lifecycle event
         product.lifecycle.push({
-            eventType: isForSale ? "Marketplace Listing" : "Marketplace Unlisting",
-            description: isForSale ? `Product listed for sale at $${price}` : "Product removed from marketplace"
+            eventType: isForSale ? "Listed on Marketplace" : "Unlisted from Marketplace",
+            description: isForSale ? `Product listed for sale at Rs. ${price}` : "Product removed from marketplace",
+            performedBy: req.user.email
         });
 
         await product.save();
@@ -390,10 +426,11 @@ export async function resolveRepair(req, res) {
 
         // 2. Add lifecycle record
         product.lifecycle.push({
-            eventType: newStatus,
+            eventType: resolution === "repaired" ? "Repaired" : "Not Repairable",
             description: resolution === "repaired"
                 ? "Repair completed. Product returned to active status."
-                : "Repair failed. Product marked as not repairable."
+                : "Repair failed. Product marked as not repairable.",
+            performedBy: req.user.email
         });
 
         await product.save();
@@ -430,8 +467,9 @@ export async function completeRecycling(req, res) {
 
         // 2. Add final lifecycle milestone
         product.lifecycle.push({
-            eventType: "recycled",
-            description: "Product has been successfully recycled."
+            eventType: "Recycled",
+            description: "Product has been successfully recycled.",
+            performedBy: req.user.email
         });
 
         await product.save();

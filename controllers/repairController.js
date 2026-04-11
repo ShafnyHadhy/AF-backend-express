@@ -1,10 +1,11 @@
 import ProviderProfile from '../models/providerProfile.js';
 import RepairRequest from '../models/RepairRequest.js';
+import Product from '../models/product.js';
 
 // CREATE
 export const createRepairRequest = async (req, res) => {
     try {
-        const { productName, category, description, quantity, image, location, provider } = req.body;
+        const { productID, productName, category, description, quantity, image, location, provider } = req.body;
 
         const providerProfile = await ProviderProfile.findById({ _id: provider });
         if (!providerProfile) {
@@ -13,6 +14,7 @@ export const createRepairRequest = async (req, res) => {
 
         const newRequest = new RepairRequest({
             user: req.user.userId,
+            productID, // Now correctly defined
             productName,
             provider: providerProfile.userId,
             category,
@@ -23,6 +25,23 @@ export const createRepairRequest = async (req, res) => {
             lifecycle: [{ status: 'Pending', note: 'Request created' }]
         });
         await newRequest.save();
+
+        // ✅ SYNC: Update Product Lifecycle
+        if (productID) {
+            const product = await Product.findOne({ productID });
+            if (product) {
+                product.status = 'under repair';
+                product.lifecycle.push({
+                    eventType: 'Repair Request',
+                    description: `Repair request submitted: ${description}`,
+                    location: location?.address || (location?.lat ? `${location.lat}, ${location.lng}` : ""),
+                    performedBy: req.user.email
+                });
+                await product.save();
+                console.log(`Synced Repair Request with Product ${productID}`);
+            }
+        }
+
         res.status(201).json(newRequest);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -93,13 +112,30 @@ export const updateRepairStatus = async (req, res) => {
         if (pickupDate) request.pickupDate = pickupDate;
 
         request.status = status;
-        request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
+        await request.save();
 
-        if (req.user.role === 'provider' && status === 'Accepted') {
-            request.provider = req.user.userId;
+        // ✅ SYNC: Update Product Lifecycle on status change
+        if (request.productID) {
+            const product = await Product.findOne({ productID: request.productID });
+            if (product) {
+                let eventType = status;
+                if (status === 'Accepted') eventType = 'Repair Accepted';
+                if (status === 'Completed') eventType = 'Repaired';
+
+                product.lifecycle.push({
+                    eventType,
+                    description: note || `Repair status updated to ${status}`,
+                    performedBy: req.user.email
+                });
+
+                if (status === 'Completed') product.status = 'active';
+                else if (status === 'Accepted') product.status = 'under repair';
+
+                await product.save();
+                console.log(`Synced Repair status update with Product ${request.productID}`);
+            }
         }
 
-        await request.save();
         res.json(request);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -125,18 +161,30 @@ export const updateRepairRequest = async (req, res) => {
 
         if (pickupDate) request.pickupDate = pickupDate;
 
-        // Status update logic
-        if (status && status !== request.status) {
-            request.status = status;
-            request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
+        await request.save();
 
-            // Auto-assign provider if Accepted by a provider
-            if (req.user.role === 'provider' && status === 'Accepted') {
-                request.provider = req.user.userId;
+        // ✅ SYNC: Update Product Lifecycle on status change
+        if (status && status !== request.status && request.productID) {
+            const product = await Product.findOne({ productID: request.productID });
+            if (product) {
+                let eventType = status;
+                if (status === 'Accepted') eventType = 'Repair Accepted';
+                if (status === 'Completed') eventType = 'Repaired';
+
+                product.lifecycle.push({
+                    eventType,
+                    description: note || `Repair status updated to ${status}`,
+                    performedBy: req.user.email
+                });
+
+                if (status === 'Completed') product.status = 'active';
+                else if (status === 'Accepted') product.status = 'under repair';
+
+                await product.save();
+                console.log(`Synced Repair Request update with Product ${request.productID}`);
             }
         }
 
-        await request.save();
         res.json(request);
     } catch (error) {
         res.status(500).json({ message: error.message });

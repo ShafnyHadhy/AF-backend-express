@@ -47,7 +47,6 @@ app.use("/api/repairs", repairRouter);
 app.use("/api/recycling", recycleRouter);
 app.use("/api/admin", adminRouter);
 
-// ==================== TEST ROUTES ====================
 app.get("/test-email", async (req, res) => {
   try {
     await sendEmail({

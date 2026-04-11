@@ -1,11 +1,11 @@
 import ProviderProfile from '../models/providerProfile.js';
 import RecycleRequest from '../models/RecycleRequest.js';
+import Product from '../models/product.js';
 
 // CREATE
 export const createRecycleRequest = async (req, res) => {
     try {
-
-        const { productName, category, description, quantity, image, location, provider } = req.body;
+        const { productID, productName, category, description, quantity, image, location, provider } = req.body;
 
         const providerProfile = await ProviderProfile.findById({ _id: provider });
         if (!providerProfile) {
@@ -14,6 +14,7 @@ export const createRecycleRequest = async (req, res) => {
 
         const newRequest = new RecycleRequest({
             user: req.user.userId,
+            productID,
             productName,
             provider: providerProfile.userId,
             category,
@@ -24,6 +25,23 @@ export const createRecycleRequest = async (req, res) => {
             lifecycle: [{ status: 'Pending', note: 'Request created' }]
         });
         await newRequest.save();
+
+        // ✅ SYNC: Update Product Lifecycle
+        if (productID) {
+            const product = await Product.findOne({ productID });
+            if (product) {
+                product.status = 'recycling request';
+                product.lifecycle.push({
+                    eventType: 'Recycling Request',
+                    description: `Recycling request submitted: ${description}`,
+                    location: location?.address || (location?.lat ? `${location.lat}, ${location.lng}` : ""),
+                    performedBy: req.user.email
+                });
+                await product.save();
+                console.log(`Synced Recycling Request with Product ${productID}`);
+            }
+        }
+
         res.status(201).json(newRequest);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -64,7 +82,7 @@ export const getRecycleRequests = async (req, res) => {
 
 export const getRecycleRequestById = async (req, res) => {
     try {
-        const request = await RecycleRequest.findById(req.params.id).populate('user', 'firstName lastName email').populate;
+        const request = await RecycleRequest.findById(req.params.id).populate('user', 'firstName lastName email');
         if (!request) return res.status(404).json({ message: 'Request not found' });
         res.json(request);
     } catch (error) {
@@ -82,8 +100,28 @@ export const updateRecycleStatus = async (req, res) => {
         Object.assign(request, otherDetails);
 
         request.status = status;
-        request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
         await request.save();
+
+        // ✅ SYNC: Update Product Lifecycle on status change
+        if (request.productID) {
+            const product = await Product.findOne({ productID: request.productID });
+            if (product) {
+                let eventType = status;
+                if (status === 'Completed') eventType = 'Recycled';
+
+                product.lifecycle.push({
+                    eventType,
+                    description: note || `Recycling status updated to ${status}`,
+                    performedBy: req.user.email
+                });
+
+                if (status === 'Completed') product.status = 'recycled';
+
+                await product.save();
+                console.log(`Synced Recycling status update with Product ${request.productID}`);
+            }
+        }
+
         res.json(request);
     } catch (error) {
         if (error.name === 'CastError') {
@@ -111,13 +149,28 @@ export const updateRecycleRequest = async (req, res) => {
 
         if (pickupDate) request.pickupDate = pickupDate;
 
-        // Status update logic
-        if (status && status !== request.status) {
-            request.status = status;
-            request.lifecycle.push({ status, note: note || `Status updated to ${status}` });
+        await request.save();
+
+        // ✅ SYNC: Update Product Lifecycle on status change
+        if (status && status !== request.status && request.productID) {
+            const product = await Product.findOne({ productID: request.productID });
+            if (product) {
+                let eventType = status;
+                if (status === 'Completed') eventType = 'Recycled';
+
+                product.lifecycle.push({
+                    eventType,
+                    description: note || `Recycling status updated to ${status}`,
+                    performedBy: req.user.email
+                });
+
+                if (status === 'Completed') product.status = 'recycled';
+
+                await product.save();
+                console.log(`Synced Recycling Request update with Product ${request.productID}`);
+            }
         }
 
-        await request.save();
         res.json(request);
     } catch (error) {
         if (error.name === 'CastError') {

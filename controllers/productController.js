@@ -4,10 +4,6 @@ import QRCode from "qrcode";
 
 //  CREATE PRODUCT
 export async function createProduct(req, res) {
-    console.log("!!! API-CONTROLLER: createProduct CALLED VERSION [2.0.1]");
-    console.log("DEBUG: createProduct full body:", req.body);
-    console.log("DEBUG: Schema paths:", Object.keys(Product.schema.paths));
-
     if (!req.user) {
         return res.status(401).json({
             message: "Please login to register a product."
@@ -46,7 +42,6 @@ export async function createProduct(req, res) {
             ]
         });
 
-        console.log("Schema paths at runtime:", Object.keys(product.schema.paths));
         await product.save();
 
         res.status(201).json({
@@ -64,7 +59,7 @@ export async function createProduct(req, res) {
 }
 
 
-  //  GET ALL PRODUCTS
+//  GET ALL PRODUCTS
 export async function getProducts(req, res) {
 
     if (!req.user) {
@@ -75,14 +70,11 @@ export async function getProducts(req, res) {
 
     try {
         const totalCount = await Product.countDocuments({});
-        console.log(`Total products in database: ${totalCount}`);
 
-        console.log(`Querying products for ownerEmail: ${req.user.email}`);
         const products = await Product.find({
             ownerEmail: req.user.email
         });
 
-        console.log(`Found ${products.length} products for ${req.user.email}`);
         res.json(products);
 
     } catch (error) {
@@ -153,7 +145,7 @@ export async function updateProduct(req, res) {
             });
         }
 
-        // ✅ FIX: Capture old status BEFORE Object.assign overwrites it
+        //FIX: Capture old status BEFORE Object.assign overwrites it
         const previousStatus = product.status;
 
         Object.assign(product, req.body);

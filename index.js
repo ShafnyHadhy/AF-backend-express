@@ -22,12 +22,10 @@ const __dirname = path.dirname(__filename);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ==================== BASIC MIDDLEWARE ====================
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// ==================== DATABASE CONNECTION ====================
 const connectionString = process.env.MONGO_URI;
 
 mongoose
@@ -39,7 +37,7 @@ mongoose
     console.log("Database Connection Failed!", err);
   });
 
-// ==================== ROUTES ====================
+// ROUTES 
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/providers", providerRouter);
@@ -47,6 +45,7 @@ app.use("/api/repairs", repairRouter);
 app.use("/api/recycling", recycleRouter);
 app.use("/api/admin", adminRouter);
 
+// TEST ROUTES 
 app.get("/test-email", async (req, res) => {
   try {
     await sendEmail({
@@ -68,7 +67,7 @@ app.get("/test-email", async (req, res) => {
   }
 });
 
-// ==================== HOME ROUTE ====================
+// HOME ROUTE
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -95,13 +94,13 @@ app.get("/", (req, res) => {
   });
 });
 
-// ==================== 404 HANDLER ====================
+// 404 HANDLER 
 app.use(notFound);
 
-// ==================== GLOBAL ERROR HANDLER ====================
+// GLOBAL ERROR HANDLER
 app.use(errorHandler);
 
-// ==================== START SERVER ====================
+// START SERVER 
 if (process.env.NODE_ENV !== "test") {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {

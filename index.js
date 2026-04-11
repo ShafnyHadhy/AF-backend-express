@@ -10,10 +10,17 @@ import recycleRouter from "./routes/recycleRouter.js";
 import adminRouter from "./routes/adminRouter.js";
 import { sendEmail } from "./utils/emailService.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ==================== BASIC MIDDLEWARE ====================
 app.use(cors());
@@ -97,7 +104,7 @@ app.use(errorHandler);
 
 // ==================== START SERVER ====================
 if (process.env.NODE_ENV !== "test") {
-  const PORT = process.env.PORT || 5001;
+  const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}!`);
   });

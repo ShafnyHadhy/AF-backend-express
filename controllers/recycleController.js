@@ -1,12 +1,21 @@
+import ProviderProfile from '../models/providerProfile.js';
 import RecycleRequest from '../models/RecycleRequest.js';
 
 // CREATE
 export const createRecycleRequest = async (req, res) => {
     try {
-        const { productName, category, description, quantity, image, location } = req.body;
+
+        const { productName, category, description, quantity, image, location, provider } = req.body;
+
+        const providerProfile = await ProviderProfile.findById({ _id: provider });
+        if (!providerProfile) {
+            return res.status(400).json({ message: 'Invalid provider ID' });
+        }
+
         const newRequest = new RecycleRequest({
             user: req.user.userId,
             productName,
+            provider: providerProfile.userId,
             category,
             description,
             quantity,
@@ -25,13 +34,10 @@ export const createRecycleRequest = async (req, res) => {
 export const getRecycleRequests = async (req, res) => {
     try {
         let query = {};
-        
-        // Role-based scoping
-        if (req.user.role === 'admin') {
-            // Admin can see all
-        } else {
-            // Default: Users only see their own requests
+        if (req.user.role === 'user') {
             query.user = req.user.userId;
+        } else if (req.user.role === 'provider') {
+            query.provider = req.user.userId;
         }
 
         // Filters
@@ -56,8 +62,17 @@ export const getRecycleRequests = async (req, res) => {
     }
 };
 
-// READ (Single)
 export const getRecycleRequestById = async (req, res) => {
+    try {
+        const request = await RecycleRequest.findById(req.params.id).populate('user', 'firstName lastName email').populate;
+        if (!request) return res.status(404).json({ message: 'Request not found' });
+        res.json(request);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
+export const updateRecycleStatus = async (req, res) => {
     try {
         const request = await RecycleRequest.findById(req.params.id)
             .populate('user', 'firstName lastName email');

@@ -20,10 +20,10 @@ export const validatePassword = (password) => {
     return { isValid: false, message: "Password is required" };
   }
 
-  if (password.length < 8) {
+  if (password.length < 6) {
     return {
       isValid: false,
-      message: "Password must be at least 8 characters long",
+      message: "Password must be at least 6 characters long",
     };
   }
 
@@ -158,6 +158,9 @@ export const validateRegistrationData = (data) => {
       if (!data.providerDetails.companyName) {
         errors.push("Company name is required");
       }
+      if (!data.providerDetails.companyPhone) {
+        errors.push("Company phone is required");
+      }
       if (!data.providerDetails.companyRegistrationNo) {
         errors.push("Company registration number is required");
       }
@@ -171,9 +174,14 @@ export const validateRegistrationData = (data) => {
       if (!data.recyclerDetails.companyName) {
         errors.push("Company name is required");
       }
+      if (!data.recyclerDetails.companyPhone) {
+        errors.push("Company phone is required");
+      }
       if (!data.recyclerDetails.companyRegistrationNo) {
         errors.push("Company registration number is required");
       }
+      // Recycler details validation - don't require arrays to be non-empty
+      // Just check if they exist (can be empty arrays)
     }
   }
 

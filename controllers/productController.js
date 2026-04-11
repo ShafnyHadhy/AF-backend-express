@@ -85,10 +85,6 @@ export async function getProducts(req, res) {
     }
 }
 
-
-
-
-
 //GET SINGLE PRODUCT
 
 export async function getProductById(req, res) {

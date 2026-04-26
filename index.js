@@ -30,14 +30,20 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // ==================== DATABASE CONNECTION ====================
 const connectionString = process.env.MONGO_URI;
 
-mongoose
-  .connect(connectionString)
-  .then(() => {
-    console.log("Database Connected!");
-  })
-  .catch((err) => {
+export const connectDB = async () => {
+  if (!connectionString) {
+    throw new Error("MONGO_URI is not defined in environment variables.");
+  }
+
+  await mongoose.connect(connectionString);
+  console.log("Database Connected!");
+};
+
+if (process.env.NODE_ENV !== "test") {
+  connectDB().catch((err) => {
     console.log("Database Connection Failed!", err);
   });
+}
 
 // ==================== ROUTES ====================
 app.use("/api/users", userRouter);
